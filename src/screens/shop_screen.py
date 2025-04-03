@@ -10,15 +10,18 @@ from src.screens.screen import Screen
 from src.screens.ui_elements import Button, Label, Panel, CardRenderer
 from src.utils.resource_loader import ResourceLoader
 from src.utils.save_manager import SaveManager
-from src.constants import SHOP_CARDS_OFFERED, SHOP_COST, RARITY_PROBABILITIES
+from src.constants import (
+    CARD_PACK_SIZE, CARD_PACK_COST, RARITY_PROBABILITIES,
+    RARITY_COMMON, RARITY_UNCOMMON, RARITY_RARE, RARITY_EPIC
+)
 
 
 class ShopScreen(Screen):
     """
     Shop screen allowing players to:
-    - Buy new cards with credits
-    - View cards before purchasing
-    - See their current credit balance
+    - Buy card packs with credits
+    - View their current credit balance
+    - See pack contents after purchase
     """
     
     def __init__(self, display, manager=None):
@@ -37,9 +40,10 @@ class ShopScreen(Screen):
         self.card_database = {}
         self.player = None
         
-        # Shop state
-        self.shop_cards = []  # Cards currently offered in the shop
-        self.selected_card = None
+        # Pack state
+        self.generated_pack = []  # Cards currently offered in the pack
+        self.show_pack_contents = False
+        self.last_purchased_pack = []
         
         # Card renderer
         self.card_renderer = CardRenderer(card_size=(120, 180))
@@ -77,28 +81,38 @@ class ShopScreen(Screen):
         )
         title_panel.add_element(self.credits_label)
         
-        # Shop panel for displaying cards
+        # Shop panel for displaying cards/packs
         shop_panel = Panel(
-            pygame.Rect(10, 80, self.width - 220, self.height - 160),
+            pygame.Rect(10, 80, self.width - 20, self.height - 160),
             color=(40, 45, 60),
             border_color=(80, 90, 120),
             border_width=2,
             rounded=True
         )
         
-        # Instruction label
-        instruction_label = Label(
-            pygame.Rect(20, 10, shop_panel.rect.width - 40, 30),
-            "Click on a card to select it, then click 'Buy' to purchase.",
+        # Pack title
+        self.pack_title = Label(
+            pygame.Rect(0, 20, shop_panel.rect.width, 40),
+            "Card Pack",
+            color=(255, 215, 0),  # Gold color
+            font_size=28,
+            align='center'
+        )
+        shop_panel.add_element(self.pack_title)
+        
+        # Pack description
+        self.pack_description = Label(
+            pygame.Rect(0, 70, shop_panel.rect.width, 30),
+            f"Contains {CARD_PACK_SIZE} random cards based on rarity distribution",
             color=(180, 180, 180),
             font_size=16,
             align='center'
         )
-        shop_panel.add_element(instruction_label)
+        shop_panel.add_element(self.pack_description)
         
         # Message label for displaying success/failure messages
         self.message_label = Label(
-            pygame.Rect(20, shop_panel.rect.height - 40, shop_panel.rect.width - 40, 30),
+            pygame.Rect(0, shop_panel.rect.height - 40, shop_panel.rect.width, 30),
             "",
             color=(180, 180, 180),
             font_size=16,
@@ -106,57 +120,27 @@ class ShopScreen(Screen):
         )
         shop_panel.add_element(self.message_label)
         
-        # Right panel for card details and controls
-        detail_panel = Panel(
-            pygame.Rect(self.width - 200, 80, 190, self.height - 160),
-            color=(40, 45, 60),
-            border_color=(80, 90, 120),
-            border_width=2,
-            rounded=True
-        )
-        
-        # Card details (will be rendered directly)
-        detail_label = Label(
-            pygame.Rect(0, 10, 190, 30),
-            "Card Details",
-            color=(220, 220, 220),
-            font_size=20,
-            align='center'
-        )
-        detail_panel.add_element(detail_label)
-        
-        # Buy button
+        # Buy button - centered on the screen
         self.buy_button = Button(
-            pygame.Rect(20, detail_panel.rect.height - 160, 150, 40),
-            f"Buy ({SHOP_COST} Credits)",
-            self._buy_selected_card,
+            pygame.Rect(shop_panel.rect.width // 2 - 125, shop_panel.rect.height - 100, 250, 50),
+            f"Buy Pack ({CARD_PACK_COST} Credits)",
+            self._buy_pack,
             color=(60, 120, 60),
             hover_color=(80, 160, 80),
-            font_size=16
+            font_size=20
         )
-        detail_panel.add_element(self.buy_button)
-        
-        # Refresh button
-        self.refresh_button = Button(
-            pygame.Rect(20, detail_panel.rect.height - 110, 150, 40),
-            f"Refresh Shop",
-            self._refresh_shop,
-            color=(60, 60, 120),
-            hover_color=(80, 80, 160),
-            font_size=16
-        )
-        detail_panel.add_element(self.refresh_button)
+        shop_panel.add_element(self.buy_button)
         
         # Back button
         back_button = Button(
-            pygame.Rect(20, detail_panel.rect.height - 60, 150, 40),
+            pygame.Rect(shop_panel.rect.width - 150, shop_panel.rect.height - 50, 120, 40),
             "Back to Menu",
             self._back_to_menu,
             color=(100, 100, 100),
             hover_color=(140, 140, 140),
             font_size=16
         )
-        detail_panel.add_element(back_button)
+        shop_panel.add_element(back_button)
         
         # Bottom panel for shop info
         info_panel = Panel(
@@ -170,9 +154,9 @@ class ShopScreen(Screen):
         # Shop info text
         shop_info = Label(
             pygame.Rect(20, 0, info_panel.rect.width - 40, 60),
-            f"The shop offers {SHOP_CARDS_OFFERED} random cards. "
-            f"Each purchase costs {SHOP_COST} credits. "
-            f"Card rarities: Common (60%), Uncommon (25%), Rare (10%), Epic (5%)",
+            f"Each pack costs {CARD_PACK_COST} credits and contains {CARD_PACK_SIZE} cards. "
+            f"Card rarities: Common (60%), Uncommon (25%), Rare (10%), Epic (5%). "
+            f"Excess cards (beyond 3 copies) are automatically converted to credits.",
             color=(180, 180, 180),
             font_size=14,
             align='center'
@@ -180,7 +164,7 @@ class ShopScreen(Screen):
         info_panel.add_element(shop_info)
         
         # Add all panels to UI elements
-        self.ui_elements = [title_panel, shop_panel, detail_panel, info_panel]
+        self.ui_elements = [title_panel, shop_panel, info_panel]
     
     def on_enter(self, previous_screen=None, **kwargs):
         """
@@ -195,8 +179,12 @@ class ShopScreen(Screen):
         # Load cards and player data
         self._load_data()
         
-        # Generate shop offerings
-        self._generate_shop_cards()
+        # Generate a card pack
+        self._generate_pack()
+        
+        # Reset view state
+        self.show_pack_contents = False
+        self.last_purchased_pack = []
         
         # Update UI
         self._update_ui()
@@ -223,32 +211,42 @@ class ShopScreen(Screen):
         self.credits_label.set_text(f"Credits: {self.player.credits}")
         
         # Update buy button state
-        if self.selected_card and self.player.credits >= SHOP_COST:
+        if self.player.credits >= CARD_PACK_COST:
             self.buy_button.enabled = True
         else:
             self.buy_button.enabled = False
+            
+        # Update UI based on whether we're showing pack contents
+        if self.show_pack_contents:
+            self.pack_title.set_text("Pack Contents")
+            self.pack_description.set_text("You got these cards!")
+            self.buy_button.text = "Buy Another Pack"
+        else:
+            self.pack_title.set_text("Card Pack")
+            self.pack_description.set_text(f"Contains {CARD_PACK_SIZE} random cards based on rarity distribution")
+            self.buy_button.text = f"Buy Pack ({CARD_PACK_COST} Credits)"
     
-    def _generate_shop_cards(self):
-        """Generate random cards for the shop."""
+    def _generate_pack(self):
+        """Generate a new card pack with random cards."""
         if not self.card_database:
             return
         
-        self.shop_cards = []
+        self.generated_pack = []
         
         # Group cards by rarity
         cards_by_rarity = {
-            "common": [],
-            "uncommon": [],
-            "rare": [],
-            "epic": []
+            RARITY_COMMON: [],
+            RARITY_UNCOMMON: [],
+            RARITY_RARE: [],
+            RARITY_EPIC: []
         }
         
         for card_id, card in self.card_database.items():
             if card.rarity in cards_by_rarity:
                 cards_by_rarity[card.rarity].append(card)
         
-        # Generate shop cards
-        for _ in range(SHOP_CARDS_OFFERED):
+        # Generate pack cards
+        for _ in range(CARD_PACK_SIZE):
             # Determine rarity based on probabilities
             rarity = self._select_random_rarity()
             
@@ -257,7 +255,7 @@ class ShopScreen(Screen):
             
             # If no cards of this rarity, pick from common
             if not rarity_cards:
-                rarity_cards = cards_by_rarity.get("common", [])
+                rarity_cards = cards_by_rarity.get(RARITY_COMMON, [])
             
             # If still no cards, skip
             if not rarity_cards:
@@ -265,15 +263,9 @@ class ShopScreen(Screen):
             
             # Pick a random card
             card = random.choice(rarity_cards)
-            self.shop_cards.append(card)
+            self.generated_pack.append(card)
     
     def _select_random_rarity(self):
-        """
-        Select a random rarity based on probabilities.
-        
-        Returns:
-            str: Selected rarity
-        """
         """
         Select a random rarity based on probabilities.
         
@@ -283,56 +275,67 @@ class ShopScreen(Screen):
         roll = random.random()
         cumulative = 0
         
-        # Sort probabilities in descending order
-        for rarity, probability in sorted(RARITY_PROBABILITIES.items(), key=lambda x: x[1], reverse=True):
+        # Check each rarity probability
+        for rarity, probability in RARITY_PROBABILITIES.items():
             cumulative += probability
             if roll <= cumulative:
                 return rarity
         
         # Default to common if something goes wrong
-        return "common"
+        return RARITY_COMMON
     
-    def _buy_selected_card(self):
-        """Buy the currently selected card."""
-        if not self.player or not self.selected_card:
+    def _buy_pack(self):
+        """Buy the current card pack."""
+        if not self.player:
+            return
+        
+        # If showing pack contents, generate a new pack and reset view
+        if self.show_pack_contents:
+            self._generate_pack()
+            self.show_pack_contents = False
+            self._update_ui()
             return
         
         # Check if player has enough credits
-        if self.player.credits < SHOP_COST:
+        if self.player.credits < CARD_PACK_COST:
             self.message_label.set_text("Not enough credits!")
             return
         
         # Subtract credits
-        self.player.credits -= SHOP_COST
+        self.player.credits -= CARD_PACK_COST
         
-        # Add card to collection
-        self.player.add_to_collection(self.selected_card.id)
+        # Process the cards from the pack
+        self.last_purchased_pack = []
+        added_cards_info = []
         
-        # Show success message
-        self.message_label.set_text(f"Successfully purchased {self.selected_card.name}!")
+        for card in self.generated_pack:
+            # Add to collection, handling potential conversion
+            added, credits = self.player.add_to_collection(card.id)
+            
+            if added > 0:
+                added_cards_info.append(f"{card.name} (Added to collection)")
+            
+            if credits > 0:
+                added_cards_info.append(f"{card.name} (Converted to {credits} credits)")
+                
+            # Remember the card for display
+            self.last_purchased_pack.append(card)
         
-        # Remove the card from the shop
-        if self.selected_card in self.shop_cards:
-            self.shop_cards.remove(self.selected_card)
+        # Show success message with added cards
+        info_text = ", ".join(added_cards_info)
+        if len(info_text) > 60:  # Truncate if too long
+            info_text = info_text[:57] + "..."
+            
+        self.message_label.set_text(f"Successfully purchased pack! {info_text}")
         
-        # Clear selection
-        self.selected_card = None
+        # Show pack contents
+        self.show_pack_contents = True
         
         # Save player data
         SaveManager.save_player(self.player)
         
         # Update UI
         self._update_ui()
-        
-        # If shop is empty, generate new cards
-        if not self.shop_cards:
-            self._generate_shop_cards()
-    
-    def _refresh_shop(self):
-        """Refresh the shop with new cards."""
-        self._generate_shop_cards()
-        self.selected_card = None
-        self.message_label.set_text("Shop refreshed with new cards!")
     
     def _back_to_menu(self):
         """Return to the main menu."""
@@ -343,63 +346,6 @@ class ShopScreen(Screen):
         # Return to home screen
         self.switch_to_screen("home")
     
-    def handle_event(self, event):
-        """
-        Handle pygame events.
-        
-        Args:
-            event (pygame.event.Event): The event to handle
-            
-        Returns:
-            bool: True if the event was handled, False otherwise
-        """
-        # First check if UI elements handle the event
-        if super().handle_event(event):
-            return True
-        
-        # Handle mouse clicks on shop cards
-        if event.type == pygame.MOUSEBUTTONDOWN and event.button == 1:
-            # Check if clicked on a shop card
-            for i, card in enumerate(self.shop_cards):
-                card_rect = self._get_shop_card_rect(i)
-                
-                if card_rect.collidepoint(event.pos):
-                    # Select this card
-                    self.selected_card = card
-                    self._update_ui()
-                    return True
-        
-        return False
-    
-    def _get_shop_card_rect(self, index):
-        """
-        Get the rectangle for a card in the shop.
-        
-        Args:
-            index (int): Index of the card
-            
-        Returns:
-            pygame.Rect: Rectangle for the card
-        """
-        # Card size
-        card_width, card_height = self.card_renderer.card_size
-        
-        # Shop panel position and size
-        panel_rect = self.ui_elements[1].rect  # 1 is the shop panel
-        
-        # Layout: 5 cards in a row, possibly multiple rows
-        cols = 5
-        col = index % cols
-        row = index // cols
-        
-        # Calculate position
-        margin_x = (panel_rect.width - (cols * card_width)) // (cols + 1)
-        margin_y = 30
-        x = panel_rect.left + margin_x + col * (card_width + margin_x)
-        y = panel_rect.top + 50 + row * (card_height + margin_y)
-        
-        return pygame.Rect(x, y, card_width, card_height)
-    
     def render(self):
         """Render the shop screen."""
         # Draw background
@@ -409,109 +355,97 @@ class ShopScreen(Screen):
         for element in self.ui_elements:
             element.render(self.display)
         
-        # Render shop cards
-        self._render_shop_cards()
-        
-        # Render selected card details
-        self._render_card_details()
+        # Render the card pack or its contents
+        self._render_pack()
     
-    def _render_shop_cards(self):
-        """Render the cards offered in the shop."""
-        for i, card in enumerate(self.shop_cards):
-            card_rect = self._get_shop_card_rect(i)
-            
-            # Draw the card
-            self.card_renderer.render_card(
-                self.display, 
-                card, 
-                (card_rect.left, card_rect.top),
-                selectable=True,
-                selected=card == self.selected_card
-            )
+    def _render_pack(self):
+        """Render either the card pack or its contents after purchase."""
+        # Shop panel is the main panel
+        panel_rect = self.ui_elements[1].rect  # 1 is the shop panel
+        
+        if self.show_pack_contents and self.last_purchased_pack:
+            # Show the cards that were in the pack
+            self._render_pack_contents(panel_rect)
+        else:
+            # Show a pack visual
+            self._render_pack_visual(panel_rect)
     
-    def _render_card_details(self):
-        """Render details of the selected card."""
-        if not self.selected_card:
-            return
+    def _render_pack_contents(self, panel_rect):
+        """Render the contents of a purchased pack."""
+        # Arrange cards in a row
+        num_cards = len(self.last_purchased_pack)
+        card_width, card_height = self.card_renderer.card_size
         
-        # Detail panel
-        detail_panel = self.ui_elements[2].rect  # 2 is the detail panel
+        total_width = num_cards * (card_width + 20) - 20
+        start_x = (panel_rect.width - total_width) // 2 + panel_rect.left
+        y = panel_rect.top + 120
         
-        # Card preview at the top of the detail panel
-        card_x = detail_panel.left + (detail_panel.width - self.card_renderer.card_size[0]) // 2
-        card_y = detail_panel.top + 50
-        
-        self.card_renderer.render_card(
-            self.display,
-            self.selected_card,
-            (card_x, card_y)
+        for i, card in enumerate(self.last_purchased_pack):
+            x = start_x + i * (card_width + 20)
+            self.card_renderer.render_card(self.display, card, (x, y))
+    
+    def _render_pack_visual(self, panel_rect):
+        """Render a visual representation of a card pack."""
+        # Draw a pack rectangle
+        pack_rect = pygame.Rect(
+            panel_rect.centerx - 100,
+            panel_rect.top + 120,
+            200,
+            250
         )
         
-        # Card stats below the preview
-        stats_y = card_y + self.card_renderer.card_size[1] + 10
+        # Draw pack background
+        pygame.draw.rect(self.display, (60, 50, 80), pack_rect, border_radius=10)
+        pygame.draw.rect(self.display, (120, 100, 160), pack_rect, width=3, border_radius=10)
         
-        font = pygame.freetype.SysFont('Arial', 14)
+        # Draw pack design
+        inner_rect = pygame.Rect(
+            pack_rect.left + 20,
+            pack_rect.top + 20,
+            pack_rect.width - 40,
+            pack_rect.height - 40
+        )
+        pygame.draw.rect(self.display, (80, 70, 100), inner_rect, border_radius=5)
         
-        # Card name
-        name_surf, name_rect = font.render(f"Name: {self.selected_card.name}", (220, 220, 220))
-        name_rect.midtop = (detail_panel.centerx, stats_y)
-        self.display.blit(name_surf, name_rect)
+        # Draw pack title
+        font = pygame.freetype.SysFont('Arial', 24, bold=True)
+        pack_text, pack_rect = font.render("CARD PACK", (255, 220, 120))
+        pack_rect.center = (panel_rect.centerx, panel_rect.top + 170)
+        self.display.blit(pack_text, pack_rect)
         
-        # Card rarity
-        rarity_surf, rarity_rect = font.render(f"Rarity: {self.selected_card.rarity.capitalize()}", (220, 220, 220))
-        rarity_rect.midtop = (detail_panel.centerx, stats_y + 20)
-        self.display.blit(rarity_surf, rarity_rect)
+        # Draw card count
+        count_text, count_rect = font.render(f"{CARD_PACK_SIZE} CARDS", (220, 220, 220))
+        count_rect.center = (panel_rect.centerx, panel_rect.top + 210)
+        self.display.blit(count_text, count_rect)
         
-        # Card stats
-        stats_surf, stats_rect = font.render(f"Cost: {self.selected_card.cost} | ATK: {self.selected_card.attack} | HP: {self.selected_card.hp}", (220, 220, 220))
-        stats_rect.midtop = (detail_panel.centerx, stats_y + 40)
-        self.display.blit(stats_surf, stats_rect)
+        # Draw some decorative elements
+        pygame.draw.rect(
+            self.display, 
+            (180, 160, 200),
+            (panel_rect.centerx - 80, panel_rect.top + 250, 160, 3),
+            border_radius=1
+        )
         
-        # Card flavor text (wrapped)
-        flavor_y = stats_y + 70
-        flavor_font = pygame.freetype.SysFont('Arial', 12, italic=True)
+        pygame.draw.rect(
+            self.display, 
+            (180, 160, 200),
+            (panel_rect.centerx - 80, panel_rect.top + 290, 160, 3),
+            border_radius=1
+        )
         
-        wrapped_flavor = self._wrap_text(self.selected_card.flavor_text, flavor_font, detail_panel.width - 20)
+        # Draw rarity indicators
+        rarity_font = pygame.freetype.SysFont('Arial', 14)
+        rarities = [
+            ("Common: 60%", (255, 255, 255)),
+            ("Uncommon: 25%", (100, 255, 100)),
+            ("Rare: 10%", (100, 100, 255)),
+            ("Epic: 5%", (255, 100, 255))
+        ]
         
-        for i, line in enumerate(wrapped_flavor):
-            flavor_surf, flavor_rect = flavor_font.render(line, (180, 180, 180))
-            flavor_rect.midtop = (detail_panel.centerx, flavor_y + i * 20)
-            self.display.blit(flavor_surf, flavor_rect)
-    
-    def _wrap_text(self, text, font, max_width):
-        """
-        Wrap text to fit within a given width.
-        
-        Args:
-            text (str): Text to wrap
-            font: Font to use for measuring
-            max_width (int): Maximum width in pixels
-            
-        Returns:
-            list: List of wrapped text lines
-        """
-        words = text.split(' ')
-        lines = []
-        current_line = []
-        
-        for word in words:
-            # Test width with this word added
-            test_line = ' '.join(current_line + [word])
-            test_surf, test_rect = font.render(test_line, (0, 0, 0))
-            
-            if test_rect.width <= max_width:
-                current_line.append(word)
-            else:
-                # Add the current line to lines and start a new line
-                if current_line:
-                    lines.append(' '.join(current_line))
-                current_line = [word]
-        
-        # Add the last line
-        if current_line:
-            lines.append(' '.join(current_line))
-        
-        return lines
+        for i, (text, color) in enumerate(rarities):
+            rarity_text, rarity_rect = rarity_font.render(text, color)
+            rarity_rect.center = (panel_rect.centerx, panel_rect.top + 320 + i * 20)
+            self.display.blit(rarity_text, rarity_rect)
     
     def load_resources(self):
         """Load screen-specific resources."""

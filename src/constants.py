@@ -22,10 +22,22 @@ RARITY_PROBABILITIES = {
     RARITY_EPIC: 0.05
 }
 
+# Difficulty-based rewards
+VICTORY_REWARD_EASY = 20
+VICTORY_REWARD_NORMAL = 25
+VICTORY_REWARD_HARD = 30
+
 # Shop constants
-SHOP_CARDS_OFFERED = 5
-SHOP_COST = 30
-VICTORY_REWARD = 20
+CARD_PACK_SIZE = 5
+CARD_PACK_COST = 30
+SHOP_CARDS_OFFERED = 5  # Kept for compatibility with existing code
+SHOP_COST = 30  # Kept for compatibility with existing code
+
+# Excess card conversion rates
+CARD_CONVERSION_COMMON = 1
+CARD_CONVERSION_UNCOMMON = 3
+CARD_CONVERSION_RARE = 5
+CARD_CONVERSION_EPIC = 10
 
 # File paths
 CARDS_DATA_PATH = "data/cards.json"

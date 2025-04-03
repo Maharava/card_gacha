@@ -218,7 +218,20 @@ class HomeScreen(Screen):
     def _start_game(self, difficulty):
         """Start a new game with the selected difficulty."""
         self._close_difficulty_panel()
-        self.switch_to_screen("game", difficulty=difficulty)
+        
+        # Load player data if needed
+        if not hasattr(self, 'player') or not self.player:
+            card_database = ResourceLoader.load_cards()
+            if SaveManager.player_exists():
+                self.player = SaveManager.load_player(card_database)
+        
+        # Show active deck message if player exists
+        if hasattr(self, 'player') and self.player:
+            active_deck_name = self.player.get_active_deck_name()
+            self._show_active_deck_message(active_deck_name, difficulty)
+        else:
+            # Immediately switch to game screen if no player data
+            self.switch_to_screen("game", difficulty=difficulty)
         
     def _on_deck_button_click(self):
         """Handle deck building button click."""
@@ -269,3 +282,58 @@ class HomeScreen(Screen):
         # Render UI elements
         for element in self.ui_elements:
             element.render(self.display)
+    def _show_active_deck_message(self, deck_name, difficulty):
+        """Show a message with the active deck name before starting the game."""
+        message_panel = Panel(
+            pygame.Rect(self.width // 2 - 200, self.height // 2 - 100, 400, 200),
+            color=(50, 60, 70),
+            border_color=(100, 120, 140),
+            border_width=2,
+            rounded=True
+        )
+        
+        # Message title
+        message_title = Label(
+            pygame.Rect(0, 20, 400, 40),
+            f"Active Deck: {deck_name}",
+            color=(220, 220, 220),
+            font_size=24,
+            align='center'
+        )
+        message_panel.add_element(message_title)
+        
+        # Message description
+        message_desc = Label(
+            pygame.Rect(0, 70, 400, 60),
+            "You are about to play with your active deck. You can change your active deck in the Deck Builder.",
+            color=(180, 180, 180),
+            font_size=16,
+            align='center'
+        )
+        message_panel.add_element(message_desc)
+        
+        # Continue button
+        continue_button = Button(
+            pygame.Rect(150, 140, 100, 30),
+            "Continue",
+            lambda: self._continue_to_game(difficulty),
+            color=(60, 120, 60),
+            hover_color=(80, 160, 80),
+            font_size=16
+        )
+        message_panel.add_element(continue_button)
+        
+        # Store the panel
+        self.active_deck_message = message_panel
+        
+        # Add to UI elements
+        self.ui_elements.append(message_panel)
+
+    def _continue_to_game(self, difficulty):
+        """Continue to the game after showing the active deck message."""
+        # Remove the message panel
+        if hasattr(self, 'active_deck_message') and self.active_deck_message in self.ui_elements:
+            self.ui_elements.remove(self.active_deck_message)
+        
+        # Switch to game screen
+        self.switch_to_screen("game", difficulty=difficulty)

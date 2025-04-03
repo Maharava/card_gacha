@@ -1,10 +1,10 @@
 """
-Deck model for the card game.
+Enhanced Deck model for the card game with validation features.
 """
 import random
-from typing import List, Optional, Dict
+from typing import List, Optional, Dict, Tuple
+from collections import Counter
 from .card import Card
-
 
 class Deck:
     """
@@ -14,6 +14,9 @@ class Deck:
         cards (List[Card]): List of cards in the deck
         name (str): Name of the deck
     """
+    
+    MAX_DECK_SIZE = 30
+    MAX_COPIES_PER_CARD = 3
     
     def __init__(self, name: str = "Default Deck", cards: Optional[List[Card]] = None):
         """
@@ -26,14 +29,27 @@ class Deck:
         self.name = name
         self.cards = cards if cards is not None else []
     
-    def add_card(self, card: Card) -> None:
+    def add_card(self, card: Card) -> bool:
         """
-        Add a card to the deck.
+        Add a card to the deck if it passes validation rules.
         
         Args:
             card (Card): Card to add
+            
+        Returns:
+            bool: True if card was added, False if validation failed
         """
+        # Check deck size limit
+        if len(self.cards) >= self.MAX_DECK_SIZE:
+            return False
+        
+        # Check number of copies of this card
+        copies = sum(1 for c in self.cards if c.id == card.id)
+        if copies >= self.MAX_COPIES_PER_CARD:
+            return False
+        
         self.cards.append(card)
+        return True
     
     def remove_card(self, card_index: int) -> Optional[Card]:
         """
@@ -100,6 +116,75 @@ class Deck:
             int: Number of cards
         """
         return len(self.cards)
+    
+    def validate(self) -> Tuple[bool, str]:
+        """
+        Validate the deck against game rules.
+        
+        Returns:
+            Tuple[bool, str]: (is_valid, message) 
+        """
+        # Check deck size
+        if len(self.cards) < 1:
+            return False, "Deck must contain at least 1 card"
+        
+        if len(self.cards) > self.MAX_DECK_SIZE:
+            return False, f"Deck cannot contain more than {self.MAX_DECK_SIZE} cards"
+        
+        # Check for too many copies of a card
+        card_counts = Counter(card.id for card in self.cards)
+        for card_id, count in card_counts.items():
+            if count > self.MAX_COPIES_PER_CARD:
+                return False, f"Deck cannot contain more than {self.MAX_COPIES_PER_CARD} copies of a card"
+        
+        return True, "Deck is valid"
+    
+    def get_card_counts(self) -> Dict[str, int]:
+        """
+        Get counts of each card in the deck.
+        
+        Returns:
+            Dict[str, int]: Mapping of card IDs to counts
+        """
+        return Counter(card.id for card in self.cards)
+    
+    def get_stats(self) -> Dict[str, any]:
+        """
+        Get statistics about the deck.
+        
+        Returns:
+            Dict[str, any]: Deck statistics including rarity distribution, cost curve, etc.
+        """
+        stats = {
+            "size": len(self.cards),
+            "rarity_distribution": {},
+            "cost_distribution": {},
+            "attack_distribution": {},
+            "health_distribution": {}
+        }
+        
+        # Initialize distributions
+        for rarity in ["common", "uncommon", "rare", "epic"]:
+            stats["rarity_distribution"][rarity] = 0
+        
+        for cost in range(0, 4):  # 0-3 cost
+            stats["cost_distribution"][cost] = 0
+        
+        # Calculate distributions
+        for card in self.cards:
+            # Rarity distribution
+            if card.rarity in stats["rarity_distribution"]:
+                stats["rarity_distribution"][card.rarity] += 1
+            
+            # Cost distribution
+            if card.cost in stats["cost_distribution"]:
+                stats["cost_distribution"][card.cost] += 1
+            
+            # Attack and health
+            stats["attack_distribution"][card.attack] = stats["attack_distribution"].get(card.attack, 0) + 1
+            stats["health_distribution"][card.hp] = stats["health_distribution"].get(card.hp, 0) + 1
+        
+        return stats
     
     def to_dict(self) -> dict:
         """

@@ -1,23 +1,26 @@
 """
-Deck building screen for the card game.
+Enhanced deck building screen for the card game.
 """
 import pygame
 import os
+from typing import List, Dict, Tuple, Optional
 
 # Fixed imports
 from src.screens.screen import Screen
 from src.screens.ui_elements import Button, Label, Panel, CardRenderer
 from src.models.deck import Deck
+from src.models.card import Card
 from src.utils.resource_loader import ResourceLoader
 from src.utils.save_manager import SaveManager
 
 
 class DeckBuildingScreen(Screen):
     """
-    Deck building screen allowing players to:
-    - View their card collection
-    - Create and modify decks
-    - Sort and filter cards
+    Enhanced deck building screen allowing players to:
+    - View their card collection with advanced filtering options
+    - Create and modify multiple decks
+    - Sort and filter cards by various criteria
+    - Get deck statistics and validation feedback
     """
     
     def __init__(self, display, manager=None):
@@ -41,12 +44,23 @@ class DeckBuildingScreen(Screen):
         self.collection_page = 0
         self.cards_per_page = 8
         self.current_rarity_filter = "all"
+        self.current_cost_filter = "all"
         self.sort_method = "name"  # name, cost, rarity
         self.selected_collection_card = None
         
         # Deck view state
         self.deck_page = 0
         self.selected_deck_card = None
+        
+        # Deck list view
+        self.deck_list = []
+        self.deck_list_panel = None
+        self.showing_deck_list = False
+        
+        # Status message
+        self.status_message = ""
+        self.status_message_color = (180, 180, 180)
+        self.status_message_timer = 0
         
         # Card renderer
         self.card_renderer = CardRenderer(card_size=(100, 150))
@@ -114,8 +128,8 @@ class DeckBuildingScreen(Screen):
         collection_panel.add_element(filter_label)
         
         # Filter by rarity buttons
-        button_width = 80
-        button_spacing = 10
+        button_width = 70
+        button_spacing = 5
         button_y = 50
         
         all_button = Button(
@@ -148,9 +162,89 @@ class DeckBuildingScreen(Screen):
         )
         collection_panel.add_element(uncommon_button)
         
+        rare_button = Button(
+            pygame.Rect(100 + (button_width + button_spacing) * 3, button_y, button_width, 25),
+            "Rare",
+            lambda: self._set_rarity_filter("rare"),
+            color=(80, 80, 100),
+            hover_color=(100, 100, 130),
+            font_size=14
+        )
+        collection_panel.add_element(rare_button)
+        
+        epic_button = Button(
+            pygame.Rect(100 + (button_width + button_spacing) * 4, button_y, button_width, 25),
+            "Epic",
+            lambda: self._set_rarity_filter("epic"),
+            color=(80, 80, 100),
+            hover_color=(100, 100, 130),
+            font_size=14
+        )
+        collection_panel.add_element(epic_button)
+
+        # Filter by cost buttons
+        cost_label = Label(
+            pygame.Rect(20, 85, 80, 25),
+            "Cost:",
+            color=(180, 180, 180),
+            font_size=16,
+            align='left'
+        )
+        collection_panel.add_element(cost_label)
+        
+        cost_all_button = Button(
+            pygame.Rect(100, 85, button_width, 25),
+            "All",
+            lambda: self._set_cost_filter("all"),
+            color=(80, 80, 100),
+            hover_color=(100, 100, 130),
+            font_size=14
+        )
+        collection_panel.add_element(cost_all_button)
+        
+        cost_0_button = Button(
+            pygame.Rect(100 + (button_width + button_spacing), 85, button_width, 25),
+            "0",
+            lambda: self._set_cost_filter(0),
+            color=(80, 80, 100),
+            hover_color=(100, 100, 130),
+            font_size=14
+        )
+        collection_panel.add_element(cost_0_button)
+        
+        cost_1_button = Button(
+            pygame.Rect(100 + (button_width + button_spacing) * 2, 85, button_width, 25),
+            "1",
+            lambda: self._set_cost_filter(1),
+            color=(80, 80, 100),
+            hover_color=(100, 100, 130),
+            font_size=14
+        )
+        collection_panel.add_element(cost_1_button)
+        
+        cost_2_button = Button(
+            pygame.Rect(100 + (button_width + button_spacing) * 3, 85, button_width, 25),
+            "2",
+            lambda: self._set_cost_filter(2),
+            color=(80, 80, 100),
+            hover_color=(100, 100, 130),
+            font_size=14
+        )
+        collection_panel.add_element(cost_2_button)
+        
+        cost_3_button = Button(
+            pygame.Rect(100 + (button_width + button_spacing) * 4, 85, button_width, 25),
+            "3",
+            lambda: self._set_cost_filter(3),
+            color=(80, 80, 100),
+            hover_color=(100, 100, 130),
+            font_size=14
+        )
+        collection_panel.add_element(cost_3_button)
+        
         # Sort buttons
         sort_label = Label(
-            pygame.Rect(20, 85, 80, 25),
+            pygame.Rect(20, 120, 80, 25),
             "Sort by:",
             color=(180, 180, 180),
             font_size=16,
@@ -158,8 +252,10 @@ class DeckBuildingScreen(Screen):
         )
         collection_panel.add_element(sort_label)
         
+        sort_width = 90
+        
         name_button = Button(
-            pygame.Rect(100, 85, button_width, 25),
+            pygame.Rect(100, 120, sort_width, 25),
             "Name",
             lambda: self._set_sort_method("name"),
             color=(80, 80, 100),
@@ -169,7 +265,7 @@ class DeckBuildingScreen(Screen):
         collection_panel.add_element(name_button)
         
         cost_button = Button(
-            pygame.Rect(100 + (button_width + button_spacing), 85, button_width, 25),
+            pygame.Rect(100 + sort_width + button_spacing, 120, sort_width, 25),
             "Cost",
             lambda: self._set_sort_method("cost"),
             color=(80, 80, 100),
@@ -179,7 +275,7 @@ class DeckBuildingScreen(Screen):
         collection_panel.add_element(cost_button)
         
         rarity_button = Button(
-            pygame.Rect(100 + (button_width + button_spacing) * 2, 85, button_width, 25),
+            pygame.Rect(100 + (sort_width + button_spacing) * 2, 120, sort_width, 25),
             "Rarity",
             lambda: self._set_sort_method("rarity"),
             color=(80, 80, 100),
@@ -237,7 +333,7 @@ class DeckBuildingScreen(Screen):
         )
         deck_panel.add_element(self.deck_title)
         
-        # Deck count
+        # Deck count and validation
         self.deck_count = Label(
             pygame.Rect(deck_panel.rect.width - 120, 10, 100, 30),
             "Cards: 0/30",
@@ -246,6 +342,57 @@ class DeckBuildingScreen(Screen):
             align='right'
         )
         deck_panel.add_element(self.deck_count)
+        
+        # Deck stats
+        self.deck_stats = Label(
+            pygame.Rect(20, 50, deck_panel.rect.width - 40, 30),
+            "Avg Cost: 0.0 | Common: 0 | Uncommon: 0 | Rare: 0 | Epic: 0",
+            color=(180, 180, 180),
+            font_size=14,
+            align='left'
+        )
+        deck_panel.add_element(self.deck_stats)
+        
+        # Deck management buttons (small row beneath stats)
+        manage_decks_button = Button(
+            pygame.Rect(20, 90, 120, 25),
+            "Manage Decks",
+            self._show_deck_list,
+            color=(80, 80, 100),
+            hover_color=(100, 100, 130),
+            font_size=14
+        )
+        deck_panel.add_element(manage_decks_button)
+        
+        rename_deck_button = Button(
+            pygame.Rect(150, 90, 100, 25),
+            "Rename",
+            self._rename_current_deck,
+            color=(80, 80, 100),
+            hover_color=(100, 100, 130),
+            font_size=14
+        )
+        deck_panel.add_element(rename_deck_button)
+        
+        duplicate_deck_button = Button(
+            pygame.Rect(260, 90, 100, 25),
+            "Duplicate",
+            self._duplicate_current_deck,
+            color=(80, 80, 100),
+            hover_color=(100, 100, 130),
+            font_size=14
+        )
+        deck_panel.add_element(duplicate_deck_button)
+        
+        # Deck validation status
+        self.validation_label = Label(
+            pygame.Rect(20, 125, deck_panel.rect.width - 40, 25),
+            "",
+            color=(180, 180, 180),
+            font_size=14,
+            align='left'
+        )
+        deck_panel.add_element(self.validation_label)
         
         # Deck page navigation
         prev_deck_page_button = Button(
@@ -319,6 +466,27 @@ class DeckBuildingScreen(Screen):
         )
         control_panel.add_element(clear_deck_button)
         
+        # Set as active deck button
+        activate_button = Button(
+            pygame.Rect(530, 10, 150, 30),
+            "Set as Active",
+            self._set_as_active_deck,
+            color=(120, 120, 60),
+            hover_color=(160, 160, 80),
+            font_size=18
+        )
+        control_panel.add_element(activate_button)
+        
+        # Status message label
+        self.status_label = Label(
+            pygame.Rect(700, 10, control_panel.rect.width - 870, 30),
+            "",
+            color=(180, 180, 180),
+            font_size=14,
+            align='left'
+        )
+        control_panel.add_element(self.status_label)
+        
         # Back button
         back_button = Button(
             pygame.Rect(control_panel.rect.width - 170, 10, 150, 30),
@@ -350,6 +518,7 @@ class DeckBuildingScreen(Screen):
         self.collection_page = 0
         self.deck_page = 0
         self.current_rarity_filter = "all"
+        self.current_cost_filter = "all"
         self.sort_method = "name"
         self.selected_collection_card = None
         self.selected_deck_card = None
@@ -394,8 +563,55 @@ class DeckBuildingScreen(Screen):
         
         total_deck_pages = max(1, (self.current_deck.size() + self.cards_per_page - 1) // self.cards_per_page)
         self.deck_page_label.set_text(f"Page {self.deck_page + 1}/{total_deck_pages}")
+        
+        # Update deck stats
+        self._update_deck_stats()
+        
+        # Update deck validation
+        self._update_deck_validation()
+        
+        # Update status message
+        if self.status_message:
+            self.status_label.set_text(self.status_message)
+            self.status_label.color = self.status_message_color
     
-    def _get_filtered_cards(self):
+    def _update_deck_stats(self):
+        """Update the deck statistics display."""
+        if not self.current_deck:
+            return
+        
+        # Get deck stats
+        stats = self.current_deck.get_stats()
+        
+        # Calculate average cost
+        total_cost = sum(card.cost for card in self.current_deck.cards)
+        avg_cost = total_cost / max(1, len(self.current_deck.cards))
+        
+        # Format stats
+        stats_text = f"Avg Cost: {avg_cost:.1f} | "
+        stats_text += f"Common: {stats['rarity_distribution'].get('common', 0)} | "
+        stats_text += f"Uncommon: {stats['rarity_distribution'].get('uncommon', 0)} | "
+        stats_text += f"Rare: {stats['rarity_distribution'].get('rare', 0)} | "
+        stats_text += f"Epic: {stats['rarity_distribution'].get('epic', 0)}"
+        
+        self.deck_stats.set_text(stats_text)
+    
+    def _update_deck_validation(self):
+        """Update the deck validation status."""
+        if not self.current_deck:
+            return
+        
+        # Validate the deck
+        is_valid, message = self.current_deck.validate()
+        
+        if is_valid:
+            self.validation_label.set_text(message)
+            self.validation_label.color = (100, 255, 100)  # Green for valid
+        else:
+            self.validation_label.set_text(message)
+            self.validation_label.color = (255, 100, 100)  # Red for invalid
+    
+    def _get_filtered_cards(self) -> List[Tuple[Card, int]]:
         """
         Get the filtered and sorted list of cards from the player's collection.
         
@@ -412,7 +628,14 @@ class DeckBuildingScreen(Screen):
                 card = self.card_database[card_id]
                 
                 # Apply rarity filter
-                if self.current_rarity_filter == "all" or card.rarity == self.current_rarity_filter:
+                rarity_match = (self.current_rarity_filter == "all" or 
+                               card.rarity == self.current_rarity_filter)
+                
+                # Apply cost filter
+                cost_match = (self.current_cost_filter == "all" or 
+                             card.cost == self.current_cost_filter)
+                
+                if rarity_match and cost_match:
                     filtered_cards.append((card, quantity))
         
         # Apply sorting
@@ -434,6 +657,17 @@ class DeckBuildingScreen(Screen):
             rarity (str): Rarity to filter by
         """
         self.current_rarity_filter = rarity
+        self.collection_page = 0  # Reset to first page
+        self._update_ui()
+    
+    def _set_cost_filter(self, cost):
+        """
+        Set the cost filter.
+        
+        Args:
+            cost (int or str): Cost to filter by (or "all")
+        """
+        self.current_cost_filter = cost
         self.collection_page = 0  # Reset to first page
         self._update_ui()
     
@@ -484,11 +718,42 @@ class DeckBuildingScreen(Screen):
         if not self.player or not self.current_deck:
             return
         
-        # Update the player's deck
-        self.player.deck = self.current_deck
+        # Validate the deck first
+        is_valid, message = self.current_deck.validate()
+        if not is_valid:
+            self._set_status_message(f"Cannot save: {message}", (255, 100, 100))
+            return
         
-        # Save player data
-        SaveManager.save_player(self.player)
+        # Save the deck to player's collection
+        success, message = self.player.save_deck(self.current_deck)
+        
+        if success:
+            # Save player data
+            SaveManager.save_player(self.player)
+            self._set_status_message(message, (100, 255, 100))
+        else:
+            self._set_status_message(message, (255, 100, 100))
+    
+    def _set_as_active_deck(self):
+        """Set the current deck as the player's active deck."""
+        if not self.player or not self.current_deck:
+            return
+        
+        # Validate the deck first
+        is_valid, message = self.current_deck.validate()
+        if not is_valid:
+            self._set_status_message(f"Cannot set as active: {message}", (255, 100, 100))
+            return
+        
+        # Set as active deck
+        success, message = self.player.set_active_deck(self.current_deck.name)
+        
+        if success:
+            # Save player data
+            SaveManager.save_player(self.player)
+            self._set_status_message(message, (100, 255, 100))
+        else:
+            self._set_status_message(message, (255, 100, 100))
     
     def _new_deck(self):
         """Create a new empty deck."""
@@ -496,10 +761,16 @@ class DeckBuildingScreen(Screen):
             return
         
         # Create a deck name input dialog
-        self._show_deck_name_dialog()
+        self._show_deck_name_dialog(create_new=True)
     
-    def _show_deck_name_dialog(self):
-        """Show a dialog to input the new deck name."""
+    def _show_deck_name_dialog(self, create_new=True, old_name=None):
+        """
+        Show a dialog to input the deck name.
+        
+        Args:
+            create_new (bool): Whether to create a new deck or rename an existing one
+            old_name (str, optional): Name of the deck to rename
+        """
         # Create dialog panel
         dialog_panel = Panel(
             pygame.Rect(self.width // 2 - 150, self.height // 2 - 100, 300, 200),
@@ -510,9 +781,10 @@ class DeckBuildingScreen(Screen):
         )
         
         # Dialog title
+        title_text = "New Deck" if create_new else "Rename Deck"
         dialog_title = Label(
             pygame.Rect(0, 20, 300, 30),
-            "New Deck",
+            title_text,
             color=(220, 220, 220),
             font_size=22,
             align='center'
@@ -520,7 +792,8 @@ class DeckBuildingScreen(Screen):
         dialog_panel.add_element(dialog_title)
         
         # Input field (simulated with a label)
-        self.deck_name_input = "New Deck"
+        self.deck_name_input = "New Deck" if create_new else old_name
+        self.rename_old_name = old_name
         
         self.name_label = Label(
             pygame.Rect(50, 70, 200, 30),
@@ -535,10 +808,13 @@ class DeckBuildingScreen(Screen):
         input_border_rect = pygame.Rect(50, 70, 200, 30)
         
         # Create buttons
+        button_text = "Create" if create_new else "Rename"
+        callback = self._create_new_deck if create_new else self._finish_rename_deck
+        
         confirm_button = Button(
             pygame.Rect(50, 120, 90, 30),
-            "Create",
-            self._create_new_deck,
+            button_text,
+            callback,
             color=(60, 120, 60),
             hover_color=(80, 160, 80),
             font_size=16
@@ -564,8 +840,13 @@ class DeckBuildingScreen(Screen):
     
     def _create_new_deck(self):
         """Create a new deck with the entered name."""
+        # Check if name already exists
+        if self.player and self.deck_name_input in self.player.decks:
+            self._set_status_message(f"A deck named '{self.deck_name_input}' already exists", (255, 100, 100))
+            self._close_deck_name_dialog()
+            return
+        
         # Create a new deck
-        from ..models.deck import Deck
         self.current_deck = Deck(name=self.deck_name_input)
         
         # Close the dialog
@@ -573,12 +854,187 @@ class DeckBuildingScreen(Screen):
         
         # Update UI
         self._update_ui()
+        self._set_status_message(f"Created new deck: {self.deck_name_input}", (100, 255, 100))
+    
+    def _finish_rename_deck(self):
+        """Finish renaming the current deck."""
+        if not self.player or not self.current_deck:
+            self._close_deck_name_dialog()
+            return
+        
+        # Check if name already exists and is different from current
+        if (self.deck_name_input != self.rename_old_name and 
+            self.deck_name_input in self.player.decks):
+            self._set_status_message(f"A deck named '{self.deck_name_input}' already exists", (255, 100, 100))
+            self._close_deck_name_dialog()
+            return
+        
+        # Rename the deck
+        success, message = self.player.rename_deck(self.rename_old_name, self.deck_name_input)
+        
+        if success:
+            # Update current deck reference
+            self.current_deck = self.player.decks[self.deck_name_input]
+            
+            # Save player data
+            SaveManager.save_player(self.player)
+            self._set_status_message(message, (100, 255, 100))
+        else:
+            self._set_status_message(message, (255, 100, 100))
+        
+        # Close the dialog
+        self._close_deck_name_dialog()
+        
+        # Update UI
+        self._update_ui()
+    
+    def _rename_current_deck(self):
+        """Rename the current deck."""
+        if not self.player or not self.current_deck:
+            return
+        
+        self._show_deck_name_dialog(create_new=False, old_name=self.current_deck.name)
+    
+    def _duplicate_current_deck(self):
+        """Create a duplicate of the current deck."""
+        if not self.player or not self.current_deck:
+            return
+        
+        # Generate a new name
+        base_name = f"{self.current_deck.name} Copy"
+        new_name = base_name
+        counter = 1
+        
+        while new_name in self.player.decks:
+            counter += 1
+            new_name = f"{base_name} {counter}"
+        
+        # Create the duplicate
+        success, message = self.player.duplicate_deck(self.current_deck.name, new_name)
+        
+        if success:
+            # Set current deck to the duplicate
+            self.current_deck = self.player.decks[new_name]
+            
+            # Save player data
+            SaveManager.save_player(self.player)
+            self._set_status_message(message, (100, 255, 100))
+            
+            # Update UI
+            self._update_ui()
+        else:
+            self._set_status_message(message, (255, 100, 100))
     
     def _close_deck_name_dialog(self):
         """Close the deck name dialog."""
         if hasattr(self, 'deck_name_dialog') and self.deck_name_dialog in self.ui_elements:
             self.ui_elements.remove(self.deck_name_dialog)
             del self.deck_name_dialog
+    
+    def _show_deck_list(self):
+        """Show the list of saved decks."""
+        if not self.player:
+            return
+        
+        # Create deck list panel
+        deck_list_panel = Panel(
+            pygame.Rect(self.width // 2 - 200, self.height // 2 - 200, 400, 400),
+            color=(50, 55, 70),
+            border_color=(100, 110, 140),
+            border_width=2,
+            rounded=True
+        )
+        
+        # Panel title
+        list_title = Label(
+            pygame.Rect(0, 20, 400, 30),
+            "Your Decks",
+            color=(220, 220, 220),
+            font_size=24,
+            align='center'
+        )
+        deck_list_panel.add_element(list_title)
+        
+        # Get list of decks
+        deck_names = self.player.get_deck_list()
+        active_deck_name = self.player.get_active_deck_name()
+        
+        # Create deck buttons
+        button_height = 30
+        button_margin = 5
+        button_y = 70
+        
+        for i, deck_name in enumerate(deck_names):
+            # Highlight active deck
+            if deck_name == active_deck_name:
+                deck_color = (60, 120, 60)
+                hover_color = (80, 160, 80)
+                text = f"{deck_name} (Active)"
+            else:
+                deck_color = (80, 80, 100)
+                hover_color = (100, 100, 130)
+                text = deck_name
+            
+            # Create closure to capture the current deck name
+            def make_load_callback(name):
+                return lambda: self._load_deck(name)
+            
+            deck_button = Button(
+                pygame.Rect(50, button_y + i * (button_height + button_margin), 300, button_height),
+                text,
+                make_load_callback(deck_name),
+                color=deck_color,
+                hover_color=hover_color,
+                font_size=16
+            )
+            deck_list_panel.add_element(deck_button)
+        
+        # Close button
+        close_button = Button(
+            pygame.Rect(150, 350, 100, 30),
+            "Close",
+            self._close_deck_list,
+            color=(100, 100, 100),
+            hover_color=(140, 140, 140),
+            font_size=16
+        )
+        deck_list_panel.add_element(close_button)
+        
+        # Store the panel
+        self.deck_list_panel = deck_list_panel
+        self.showing_deck_list = True
+        
+        # Add to UI elements
+        self.ui_elements.append(deck_list_panel)
+    
+    def _close_deck_list(self):
+        """Close the deck list panel."""
+        if self.deck_list_panel in self.ui_elements:
+            self.ui_elements.remove(self.deck_list_panel)
+            self.showing_deck_list = False
+    
+    def _load_deck(self, deck_name):
+        """
+        Load a deck from the player's saved decks.
+        
+        Args:
+            deck_name (str): Name of the deck to load
+        """
+        if not self.player or deck_name not in self.player.decks:
+            return
+        
+        # Set current deck
+        self.current_deck = self.player.decks[deck_name]
+        
+        # Close deck list
+        self._close_deck_list()
+        
+        # Reset deck page
+        self.deck_page = 0
+        
+        # Update UI
+        self._update_ui()
+        self._set_status_message(f"Loaded deck: {deck_name}", (100, 255, 100))
     
     def _clear_deck(self):
         """Clear the current deck."""
@@ -590,6 +1046,7 @@ class DeckBuildingScreen(Screen):
         
         # Update UI
         self._update_ui()
+        self._set_status_message("Deck cleared", (255, 200, 100))
     
     def _back_to_menu(self):
         """Return to the main menu."""
@@ -610,17 +1067,19 @@ class DeckBuildingScreen(Screen):
         if not self.current_deck:
             return
         
-        # Check if the deck is already full
-        if self.current_deck.size() >= 30:
-            return
-        
-        # Check if we already have 3 of this card in the deck
-        card_count = sum(1 for c in self.current_deck.cards if c.id == card.id)
-        if card_count >= 3:
-            return
-        
-        # Add the card to the deck
-        self.current_deck.add_card(card)
+        # Try to add the card
+        if self.current_deck.add_card(card):
+            self._set_status_message(f"Added {card.name} to deck", (100, 255, 100))
+        else:
+            # Check why it failed
+            if len(self.current_deck.cards) >= Deck.MAX_DECK_SIZE:
+                self._set_status_message(f"Deck is full (max {Deck.MAX_DECK_SIZE} cards)", (255, 100, 100))
+            else:
+                # Count how many of this card are already in the deck
+                count = sum(1 for c in self.current_deck.cards if c.id == card.id)
+                self._set_status_message(
+                    f"Max {Deck.MAX_COPIES_PER_CARD} copies of {card.name} allowed", (255, 100, 100)
+                )
         
         # Update UI
         self._update_ui()
@@ -640,11 +1099,32 @@ class DeckBuildingScreen(Screen):
         
         # Check if the index is valid
         if 0 <= actual_index < self.current_deck.size():
+            # Get the card before removing it
+            card = self.current_deck.cards[actual_index]
+            
             # Remove the card
             self.current_deck.remove_card(actual_index)
             
+            self._set_status_message(f"Removed {card.name} from deck", (255, 200, 100))
+            
             # Update UI
             self._update_ui()
+    
+    def _set_status_message(self, message, color=(180, 180, 180)):
+        """
+        Set a status message to display to the user.
+        
+        Args:
+            message (str): Message to display
+            color (tuple): RGB color of the message
+        """
+        self.status_message = message
+        self.status_message_color = color
+        self.status_message_timer = 3.0  # Show for 3 seconds
+        
+        # Update status label
+        self.status_label.set_text(message)
+        self.status_label.color = color
     
     def handle_event(self, event):
         """
@@ -666,7 +1146,10 @@ class DeckBuildingScreen(Screen):
             if event.key == pygame.K_BACKSPACE:
                 self.deck_name_input = self.deck_name_input[:-1]
             elif event.key == pygame.K_RETURN:
-                self._create_new_deck()
+                if hasattr(self, 'rename_old_name'):
+                    self._finish_rename_deck()
+                else:
+                    self._create_new_deck()
             elif event.unicode.isprintable():
                 # Limit the name length
                 if len(self.deck_name_input) < 20:
@@ -677,6 +1160,10 @@ class DeckBuildingScreen(Screen):
                 self.name_label.set_text(self.deck_name_input)
             
             return True
+        
+        # Don't handle clicks if a dialog is open
+        if hasattr(self, 'deck_name_dialog') or self.showing_deck_list:
+            return False
         
         # Handle mouse clicks on cards in collection or deck
         if event.type == pygame.MOUSEBUTTONDOWN and event.button == 1:
@@ -788,7 +1275,7 @@ class DeckBuildingScreen(Screen):
         # Calculate position
         margin = 20
         x = panel_rect.left + margin + col * (card_width + margin)
-        y = panel_rect.top + 120 + row * (card_height + margin)
+        y = panel_rect.top + 160 + row * (card_height + margin)
         
         return pygame.Rect(x, y, card_width, card_height)
     
@@ -815,9 +1302,25 @@ class DeckBuildingScreen(Screen):
         # Calculate position
         margin = 20
         x = panel_rect.left + margin + col * (card_width + margin)
-        y = panel_rect.top + 120 + row * (card_height + margin)
+        y = panel_rect.top + 160 + row * (card_height + margin)
         
         return pygame.Rect(x, y, card_width, card_height)
+    
+    def update(self, dt):
+        """
+        Update logic for the deck building screen.
+        
+        Args:
+            dt (float): Time delta in seconds
+        """
+        super().update(dt)
+        
+        # Update status message timer
+        if self.status_message and self.status_message_timer > 0:
+            self.status_message_timer -= dt
+            if self.status_message_timer <= 0:
+                self.status_message = ""
+                self.status_label.set_text("")
     
     def render(self):
         """Render the deck building screen."""
@@ -873,6 +1376,19 @@ class DeckBuildingScreen(Screen):
             qty_surf, qty_rect = font.render(str(quantity), (220, 220, 220))
             qty_rect.center = quantity_bg.center
             self.display.blit(qty_surf, qty_rect)
+            
+            # Add "Add to Deck" hint for cards that can be added
+            if self.current_deck:
+                card_count = sum(1 for c in self.current_deck.cards if c.id == card.id)
+                can_add = (len(self.current_deck.cards) < Deck.MAX_DECK_SIZE and 
+                          card_count < Deck.MAX_COPIES_PER_CARD)
+                
+                if can_add:
+                    hint_font = pygame.freetype.SysFont('Arial', 10)
+                    hint_surf, hint_rect = hint_font.render("Click to add", (180, 180, 180))
+                    hint_rect.centerx = card_rect.centerx
+                    hint_rect.bottom = card_rect.bottom - 5
+                    self.display.blit(hint_surf, hint_rect)
     
     def _render_deck(self):
         """Render the current deck."""
@@ -896,6 +1412,25 @@ class DeckBuildingScreen(Screen):
                 selectable=True,
                 selected=(start_idx + i) == self.selected_deck_card
             )
+            
+            # Draw "Remove" hint
+            hint_font = pygame.freetype.SysFont('Arial', 10)
+            hint_surf, hint_rect = hint_font.render("Click to remove", (180, 180, 180))
+            hint_rect.centerx = card_rect.centerx
+            hint_rect.bottom = card_rect.bottom - 5
+            self.display.blit(hint_surf, hint_rect)
+            
+            # Draw card count indicator (how many of this card in the deck)
+            card_count = sum(1 for c in self.current_deck.cards if c.id == card.id)
+            
+            count_bg = pygame.Rect(card_rect.right - 25, card_rect.top + 5, 20, 20)
+            pygame.draw.rect(self.display, (50, 50, 70), count_bg, border_radius=10)
+            pygame.draw.rect(self.display, (100, 100, 130), count_bg, width=1, border_radius=10)
+            
+            count_font = pygame.freetype.SysFont('Arial', 14)
+            count_surf, count_rect = count_font.render(f"{card_count}/{Deck.MAX_COPIES_PER_CARD}", (220, 220, 220))
+            count_rect.center = count_bg.center
+            self.display.blit(count_surf, count_rect)
     
     def load_resources(self):
         """Load screen-specific resources."""

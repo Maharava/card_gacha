@@ -317,12 +317,7 @@ class GameScreen(Screen):
         self._update_ui_from_game_state()
     
     def _initialize_game(self, difficulty):
-        """
-        Initialize the game by loading resources and setting up players.
-        
-        Args:
-            difficulty (str): AI difficulty level ('easy', 'normal', 'hard')
-        """
+        """Initialize the game by loading resources and setting up players."""
         # Load cards
         card_database = ResourceLoader.load_cards()
         
@@ -333,11 +328,12 @@ class GameScreen(Screen):
         
         if player is None:
             # Create a new player with a starter deck if no save exists
-            from ..models.deck import Deck
-            from ..models.player import Player
+            from src.models.deck import Deck
+            from src.models.player import Player
             starter_deck = Deck.create_starter_deck(card_database)
             player = Player("Player", starter_deck)
             player.credits = 50  # Give some starting credits
+            player.decks = {starter_deck.name: starter_deck}  # Initialize decks dictionary
             SaveManager.save_player(player)
         
         # Create AI opponent
@@ -345,6 +341,10 @@ class GameScreen(Screen):
         
         # Create game state
         self.game_state = GameState(player, opponent)
+        
+        # Add active deck information to game log
+        self.game_log = ["Game started", f"Opponent: {opponent.name}", 
+                         f"Using deck: {player.deck.name}", "Draw your cards"]
         
         # Create controllers
         self.game_controller = GameController(self.game_state)

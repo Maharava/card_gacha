@@ -73,7 +73,8 @@ Currently implemented:
 
 - **Stage 3: AI Opponent**
   - Basic AI decision-making
-  - Difficulty scaling
+  - Difficulty scaling (Easy, Normal, Hard)
+  - AI personality/strategy variation
 
 - **Stage 4: User Interface**
   - Screen framework with screen manager
@@ -83,11 +84,26 @@ Currently implemented:
   - Shop screen
   - UI elements (buttons, panels, labels, etc.)
 
+- **Stage 5: Deck Building System**
+  - Card collection management
+  - Deck builder interface with card filtering and sorting
+  - Deck validation (30 cards, max 3 of each)
+
+- **Stage 6: Economy & Progression**
+  - Difficulty-based credit rewards
+    - Easy: 20 credits
+    - Normal: 25 credits 
+    - Hard: 30 credits
+  - Card pack system (5 cards per pack for 30 credits)
+  - Automatic conversion of excess cards to credits
+    - Common: 1 credit
+    - Uncommon: 3 credits
+    - Rare: 5 credits
+    - Epic: 10 credits
+
 Future stages to be implemented:
 
-- **Stage 5:** Deck Building System (UI is implemented, but backend needs enhancing)
-- **Stage 6:** Economy & Progression (Basic system implemented, but needs enhancement)
-- **Stage 7:** Polish & Quality of Life
+- **Stage 7:** Polish & Quality of Life (animations, sound effects, visual feedback)
 
 ## Game Mechanics
 
@@ -97,6 +113,9 @@ Future stages to be implemented:
 - Cards have cost, attack, and health values
 - Cards attack the directly opposing card or the player if no card is present
 - Different card rarities: Common, Uncommon, Rare, and Epic
+- Winning matches rewards credits based on difficulty
+- Credits can be used to purchase card packs
+- Collection is limited to 3 copies of each card, with excess cards automatically converted to credits
 
 ## Getting Started
 
@@ -126,7 +145,7 @@ The GUI version provides a graphical interface with:
 - Home screen with menu options
 - Game screen with visual card representations
 - Deck building screen for managing your collection
-- Shop screen for purchasing new cards
+- Shop screen for purchasing card packs
 
 ## Development Notes
 

@@ -4,7 +4,11 @@ Player model for the card game.
 from typing import List, Optional, Dict, Tuple
 from .card import Card
 from .deck import Deck
-from ..constants import PLAYER_STARTING_HEALTH, PLAYER_MAX_ENERGY, PLAYER_FIELD_SIZE
+from ..constants import (
+    PLAYER_STARTING_HEALTH, PLAYER_MAX_ENERGY, PLAYER_FIELD_SIZE,
+    CARD_CONVERSION_COMMON, CARD_CONVERSION_UNCOMMON, 
+    CARD_CONVERSION_RARE, CARD_CONVERSION_EPIC
+)
 
 
 class Player:
@@ -128,15 +132,57 @@ class Player:
         """
         self.energy = self.max_energy
     
-    def add_to_collection(self, card_id: str, quantity: int = 1) -> None:
+    def add_to_collection(self, card_id: str, quantity: int = 1) -> Tuple[int, int]:
         """
-        Add cards to the player's collection.
+        Add cards to the player's collection. If player already has 3 copies,
+        excess cards are converted to credits.
         
         Args:
             card_id (str): ID of the card to add
             quantity (int, optional): Quantity to add. Defaults to 1.
+            
+        Returns:
+            Tuple[int, int]: (Added cards, Credits from conversion)
         """
-        self.collection[card_id] = self.collection.get(card_id, 0) + quantity
+        current_quantity = self.collection.get(card_id, 0)
+        max_copies = 3
+        
+        # Calculate how many cards to add and how many to convert
+        can_add = max(0, max_copies - current_quantity)
+        to_add = min(quantity, can_add)
+        to_convert = quantity - to_add
+        
+        # Add cards to collection
+        if to_add > 0:
+            self.collection[card_id] = current_quantity + to_add
+        
+        # Convert excess cards to credits
+        credits_earned = 0
+        if to_convert > 0:
+            # Get card rarity to determine conversion rate
+            # We need to check if this card exists in the deck or other places
+            # since we don't have direct access to card_database here
+            from ..utils.resource_loader import ResourceLoader
+            card_database = ResourceLoader.load_cards()
+            
+            if card_id in card_database:
+                card = card_database[card_id]
+                # Determine conversion rate based on rarity
+                if card.rarity == "common":
+                    conversion_rate = CARD_CONVERSION_COMMON
+                elif card.rarity == "uncommon":
+                    conversion_rate = CARD_CONVERSION_UNCOMMON
+                elif card.rarity == "rare":
+                    conversion_rate = CARD_CONVERSION_RARE
+                elif card.rarity == "epic":
+                    conversion_rate = CARD_CONVERSION_EPIC
+                else:
+                    conversion_rate = 1  # Default fallback
+                
+                credits_earned = to_convert * conversion_rate
+                self.add_credits(credits_earned)
+        
+        return to_add, credits_earned
     
     def add_credits(self, amount: int) -> None:
         """

@@ -5,7 +5,9 @@ from typing import Tuple, List, Optional, Dict, Any
 from ..models.game_state import GameState, GamePhase
 from ..models.player import Player
 from ..models.card import Card
-from ..constants import VICTORY_REWARD
+from ..constants import (
+    VICTORY_REWARD_EASY, VICTORY_REWARD_NORMAL, VICTORY_REWARD_HARD
+)
 
 
 class GameController:
@@ -187,12 +189,29 @@ class GameController:
         # Check if game is over after attack phase
         if self._check_game_over():
             if self.game_state.winner == self.game_state.player:
-                # Award victory rewards to the player
-                self.game_state.player.add_credits(VICTORY_REWARD)
+                # Determine reward based on difficulty
+                difficulty = "normal"  # Default
+                
+                # Extract difficulty from opponent name
+                opponent_name = self.game_state.opponent.name.lower()
+                if "easy" in opponent_name:
+                    difficulty = "easy"
+                elif "hard" in opponent_name:
+                    difficulty = "hard"
+                
+                # Award difficulty-based rewards
+                reward = VICTORY_REWARD_NORMAL
+                if difficulty == "easy":
+                    reward = VICTORY_REWARD_EASY
+                elif difficulty == "hard":
+                    reward = VICTORY_REWARD_HARD
+                    
+                self.game_state.player.add_credits(reward)
                 events.append({
                     "type": "credits_awarded",
                     "player": self.game_state.player.name,
-                    "amount": VICTORY_REWARD
+                    "amount": reward,
+                    "difficulty": difficulty
                 })
             
             events.append({
