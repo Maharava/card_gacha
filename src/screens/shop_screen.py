@@ -299,6 +299,7 @@ class ShopScreen(Screen):
         # Check if player has enough credits
         if self.player.credits < CARD_PACK_COST:
             self.message_label.set_text("Not enough credits!")
+            self.message_label.color = (255, 100, 100)  # Red for error
             return
         
         # Subtract credits
@@ -306,27 +307,40 @@ class ShopScreen(Screen):
         
         # Process the cards from the pack
         self.last_purchased_pack = []
-        added_cards_info = []
+        cards_added = []
+        cards_converted = []
+        total_credits_from_conversion = 0
         
         for card in self.generated_pack:
             # Add to collection, handling potential conversion
             added, credits = self.player.add_to_collection(card.id)
             
             if added > 0:
-                added_cards_info.append(f"{card.name} (Added to collection)")
+                cards_added.append(card.name)
             
             if credits > 0:
-                added_cards_info.append(f"{card.name} (Converted to {credits} credits)")
+                cards_converted.append((card.name, credits))
+                total_credits_from_conversion += credits
                 
             # Remember the card for display
             self.last_purchased_pack.append(card)
         
-        # Show success message with added cards
-        info_text = ", ".join(added_cards_info)
-        if len(info_text) > 60:  # Truncate if too long
-            info_text = info_text[:57] + "..."
-            
-        self.message_label.set_text(f"Successfully purchased pack! {info_text}")
+        # Prepare success message
+        if cards_added and cards_converted:
+            message = f"Pack purchased! Added {len(cards_added)} cards to collection. "
+            message += f"Converted {len(cards_converted)} excess cards for {total_credits_from_conversion} credits."
+            self.message_label.color = (100, 255, 100)  # Green for success
+        elif cards_added:
+            message = f"Pack purchased! Added {len(cards_added)} new cards to your collection."
+            self.message_label.color = (100, 255, 100)  # Green for success
+        elif cards_converted:
+            message = f"Pack purchased! All cards were duplicates and converted to {total_credits_from_conversion} credits."
+            self.message_label.color = (255, 215, 0)  # Gold for conversion
+        else:
+            message = "Pack purchased!"
+            self.message_label.color = (100, 255, 100)  # Green for success
+        
+        self.message_label.set_text(message)
         
         # Show pack contents
         self.show_pack_contents = True

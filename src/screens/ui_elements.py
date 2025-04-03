@@ -74,7 +74,8 @@ class Button:
         
         elif event.type == pygame.MOUSEBUTTONDOWN and event.button == 1:
             # Left mouse button pressed
-            if self.hovered:
+            if self.rect.collidepoint(event.pos):
+                self.hovered = True
                 self.pressed = True
                 return True
         
@@ -83,7 +84,7 @@ class Button:
             was_pressed = self.pressed
             self.pressed = False
             
-            if was_pressed and self.hovered and self.callback:
+            if was_pressed and self.rect.collidepoint(event.pos) and self.callback:
                 self.callback()
                 return True
         
@@ -211,8 +212,8 @@ class Panel:
         
         Args:
             rect (pygame.Rect): The panel's rectangle
-            color (tuple): RGB color of the panel
-            border_color (tuple): RGB color of the border
+            color (tuple): RGB or RGBA color of the panel
+            border_color (tuple): RGB color of the border, or None for no border
             border_width (int): Width of the border
             rounded (bool): Whether to round the corners
         """
@@ -224,6 +225,11 @@ class Panel:
         
         # UI elements in the panel
         self.elements = []
+        
+        # Create surface for semi-transparent panels
+        self.has_alpha = len(self.color) == 4 and self.color[3] < 255
+        if self.has_alpha:
+            self.surface = pygame.Surface((self.rect.width, self.rect.height), pygame.SRCALPHA)
     
     def add_element(self, element):
         """
@@ -270,22 +276,53 @@ class Panel:
         Args:
             surface (pygame.Surface): Surface to render on
         """
-        # Draw panel background
-        if self.rounded:
-            pygame.draw.rect(surface, self.color, self.rect, border_radius=10)
-            if self.border_width > 0:
-                pygame.draw.rect(surface, self.border_color, self.rect, 
-                                width=self.border_width, border_radius=10)
+        # Handle semi-transparent panels
+        if self.has_alpha:
+            # Fill the panel surface with the transparent color
+            self.surface.fill(self.color)
+            
+            # Render contained elements to the panel surface
+            for element in self.elements:
+                if hasattr(element, 'render'):
+                    # Adjust element position to be relative to panel
+                    original_rect = element.rect.copy()
+                    element.rect.x -= self.rect.x
+                    element.rect.y -= self.rect.y
+                    
+                    # Render element to panel surface
+                    element.render(self.surface)
+                    
+                    # Restore original position
+                    element.rect = original_rect
+            
+            # Blit panel surface to main surface
+            surface.blit(self.surface, self.rect)
+            
+            # Draw border if needed
+            if self.border_color and self.border_width > 0:
+                if self.rounded:
+                    pygame.draw.rect(surface, self.border_color, self.rect, 
+                                   width=self.border_width, border_radius=10)
+                else:
+                    pygame.draw.rect(surface, self.border_color, self.rect, 
+                                   width=self.border_width)
         else:
-            pygame.draw.rect(surface, self.color, self.rect)
-            if self.border_width > 0:
-                pygame.draw.rect(surface, self.border_color, self.rect, 
-                                width=self.border_width)
-        
-        # Render contained elements
-        for element in self.elements:
-            if hasattr(element, 'render'):
-                element.render(surface)
+            # Draw panel background
+            if self.rounded:
+                pygame.draw.rect(surface, self.color, self.rect, border_radius=10)
+                if self.border_color and self.border_width > 0:
+                    pygame.draw.rect(surface, self.border_color, self.rect, 
+                                   width=self.border_width, border_radius=10)
+            else:
+                pygame.draw.rect(surface, self.color, self.rect)
+                if self.border_color and self.border_width > 0:
+                    pygame.draw.rect(surface, self.border_color, self.rect, 
+                                   width=self.border_width)
+            
+            # Render contained elements
+            for element in self.elements:
+                if hasattr(element, 'render'):
+                    element.render(surface)
 
 
 class ProgressBar:

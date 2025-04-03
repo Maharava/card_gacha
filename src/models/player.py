@@ -159,28 +159,41 @@ class Player:
         # Convert excess cards to credits
         credits_earned = 0
         if to_convert > 0:
-            # Get card rarity to determine conversion rate
-            # We need to check if this card exists in the deck or other places
-            # since we don't have direct access to card_database here
-            from ..utils.resource_loader import ResourceLoader
-            card_database = ResourceLoader.load_cards()
+            # Look for this card in our deck to get its rarity
+            card_rarity = "common"  # Default fallback
             
-            if card_id in card_database:
-                card = card_database[card_id]
-                # Determine conversion rate based on rarity
-                if card.rarity == "common":
-                    conversion_rate = CARD_CONVERSION_COMMON
-                elif card.rarity == "uncommon":
-                    conversion_rate = CARD_CONVERSION_UNCOMMON
-                elif card.rarity == "rare":
-                    conversion_rate = CARD_CONVERSION_RARE
-                elif card.rarity == "epic":
-                    conversion_rate = CARD_CONVERSION_EPIC
-                else:
-                    conversion_rate = 1  # Default fallback
-                
-                credits_earned = to_convert * conversion_rate
-                self.add_credits(credits_earned)
+            # Check our deck for this card
+            for card in self.deck.cards:
+                if card.id == card_id:
+                    card_rarity = card.rarity
+                    break
+                    
+            # If not found in deck, look at cards on field or in hand
+            if card_rarity == "common":
+                for card in self.hand:
+                    if card.id == card_id:
+                        card_rarity = card.rarity
+                        break
+                        
+                for card in self.field:
+                    if card and card.id == card_id:
+                        card_rarity = card.rarity
+                        break
+            
+            # Determine conversion rate based on rarity
+            if card_rarity == "common":
+                conversion_rate = CARD_CONVERSION_COMMON
+            elif card_rarity == "uncommon":
+                conversion_rate = CARD_CONVERSION_UNCOMMON
+            elif card_rarity == "rare":
+                conversion_rate = CARD_CONVERSION_RARE
+            elif card_rarity == "epic":
+                conversion_rate = CARD_CONVERSION_EPIC
+            else:
+                conversion_rate = 1  # Default fallback
+            
+            credits_earned = to_convert * conversion_rate
+            self.add_credits(credits_earned)
         
         return to_add, credits_earned
     

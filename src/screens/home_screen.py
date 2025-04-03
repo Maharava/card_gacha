@@ -7,6 +7,8 @@ import os
 # Fixed imports
 from src.screens.screen import Screen
 from src.screens.ui_elements import Button, Label, Panel
+from src.utils.resource_loader import ResourceLoader
+from src.utils.save_manager import SaveManager
 
 
 class HomeScreen(Screen):
@@ -38,6 +40,15 @@ class HomeScreen(Screen):
     
     def _create_ui_elements(self):
         """Create the UI elements for the home screen."""
+        # Background panel to ensure proper layering
+        background_panel = Panel(
+            pygame.Rect(0, 0, self.width, self.height),
+            color=(30, 40, 50),
+            border_color=None,
+            border_width=0,
+            rounded=False
+        )
+        
         # Title panel
         title_panel = Panel(
             pygame.Rect(self.width // 2 - 200, 50, 400, 100),
@@ -137,11 +148,28 @@ class HomeScreen(Screen):
         )
         menu_panel.add_element(exit_button)
         
-        # Add all panels to the UI elements list
-        self.ui_elements = [title_panel, subtitle_label, menu_panel]
+        # Add all panels to the UI elements list - order matters for rendering!
+        self.ui_elements = [background_panel, title_panel, subtitle_label, menu_panel]
+        
+        # Initialize popup panels as None
+        self.difficulty_panel = None
+        self.active_deck_message = None
         
     def _on_play_button_click(self):
         """Handle play button click."""
+        # Close any existing popup panels
+        self._close_all_popups()
+        
+        # Create a semi-transparent overlay for better visibility
+        overlay = Panel(
+            pygame.Rect(0, 0, self.width, self.height),
+            color=(0, 0, 0, 128),  # Semi-transparent black
+            border_color=None,
+            border_width=0,
+            rounded=False
+        )
+        self.ui_elements.append(overlay)
+        
         # Open a difficulty selection dialog
         self.difficulty_panel = Panel(
             pygame.Rect(self.width // 2 - 200, self.height // 2 - 150, 400, 300),
@@ -200,7 +228,7 @@ class HomeScreen(Screen):
         cancel_button = Button(
             pygame.Rect(button_x, 230, button_width, button_height),
             "Cancel",
-            self._close_difficulty_panel,
+            self._close_all_popups,
             color=(80, 80, 80),
             hover_color=(120, 120, 120),
             font_size=20
@@ -210,20 +238,36 @@ class HomeScreen(Screen):
         # Add the difficulty panel to UI elements
         self.ui_elements.append(self.difficulty_panel)
         
-    def _close_difficulty_panel(self):
-        """Close the difficulty selection panel."""
+    def _close_all_popups(self):
+        """Close all popup panels."""
+        # Remove all popups from UI elements
         if self.difficulty_panel in self.ui_elements:
             self.ui_elements.remove(self.difficulty_panel)
+            self.difficulty_panel = None
+        
+        if self.active_deck_message in self.ui_elements:
+            self.ui_elements.remove(self.active_deck_message)
+            self.active_deck_message = None
+            
+        # Remove any overlay that might be present
+        self.ui_elements = [e for e in self.ui_elements if not (
+            isinstance(e, Panel) and 
+            e.rect.width == self.width and 
+            e.rect.height == self.height and
+            e.rect.x == 0 and
+            e.rect.y == 0 and
+            e not in self.ui_elements[:1]  # Keep the background panel
+        )]
             
     def _start_game(self, difficulty):
         """Start a new game with the selected difficulty."""
-        self._close_difficulty_panel()
+        # Close difficulty panel
+        self._close_all_popups()
         
         # Load player data if needed
-        if not hasattr(self, 'player') or not self.player:
-            card_database = ResourceLoader.load_cards()
-            if SaveManager.player_exists():
-                self.player = SaveManager.load_player(card_database)
+        card_database = ResourceLoader.load_cards()
+        if SaveManager.player_exists():
+            self.player = SaveManager.load_player(card_database)
         
         # Show active deck message if player exists
         if hasattr(self, 'player') and self.player:
@@ -282,9 +326,21 @@ class HomeScreen(Screen):
         # Render UI elements
         for element in self.ui_elements:
             element.render(self.display)
+    
     def _show_active_deck_message(self, deck_name, difficulty):
         """Show a message with the active deck name before starting the game."""
-        message_panel = Panel(
+        # Create a semi-transparent overlay for better visibility
+        overlay = Panel(
+            pygame.Rect(0, 0, self.width, self.height),
+            color=(0, 0, 0, 128),  # Semi-transparent black
+            border_color=None,
+            border_width=0,
+            rounded=False
+        )
+        self.ui_elements.append(overlay)
+        
+        # Create message panel
+        self.active_deck_message = Panel(
             pygame.Rect(self.width // 2 - 200, self.height // 2 - 100, 400, 200),
             color=(50, 60, 70),
             border_color=(100, 120, 140),
@@ -300,7 +356,7 @@ class HomeScreen(Screen):
             font_size=24,
             align='center'
         )
-        message_panel.add_element(message_title)
+        self.active_deck_message.add_element(message_title)
         
         # Message description
         message_desc = Label(
@@ -310,7 +366,7 @@ class HomeScreen(Screen):
             font_size=16,
             align='center'
         )
-        message_panel.add_element(message_desc)
+        self.active_deck_message.add_element(message_desc)
         
         # Continue button
         continue_button = Button(
@@ -321,19 +377,15 @@ class HomeScreen(Screen):
             hover_color=(80, 160, 80),
             font_size=16
         )
-        message_panel.add_element(continue_button)
-        
-        # Store the panel
-        self.active_deck_message = message_panel
+        self.active_deck_message.add_element(continue_button)
         
         # Add to UI elements
-        self.ui_elements.append(message_panel)
+        self.ui_elements.append(self.active_deck_message)
 
     def _continue_to_game(self, difficulty):
         """Continue to the game after showing the active deck message."""
-        # Remove the message panel
-        if hasattr(self, 'active_deck_message') and self.active_deck_message in self.ui_elements:
-            self.ui_elements.remove(self.active_deck_message)
+        # Close all popup panels
+        self._close_all_popups()
         
         # Switch to game screen
         self.switch_to_screen("game", difficulty=difficulty)

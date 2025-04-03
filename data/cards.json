@@ -1,155 +1,272 @@
 {
-  "fireball": {
-    "name": "Fireball",
+  "card_1": {
+    "name": "Agent Sofia",
     "hp": 2,
-    "cost": 2,
-    "attack": 3,
-    "image": "assets/images/cards/common/fireball.png",
-    "flavor_text": "A ball of fire, surprisingly.",
-    "rarity": "common"
-  },
-  "ice_shard": {
-    "name": "Ice Shard",
-    "hp": 1,
     "cost": 1,
     "attack": 2,
-    "image": "assets/images/cards/common/ice_shard.png",
-    "flavor_text": "Sharp, cold, and to the point.",
+    "image": "assets/images/cards/common/card_1.png",
+    "flavor_text": "Specializes in rapid response and quick extraction.",
     "rarity": "common"
   },
-  "stone_wall": {
-    "name": "Stone Wall",
-    "hp": 5,
+  "card_2": {
+    "name": "Agent Maya",
+    "hp": 1,
+    "cost": 1,
+    "attack": 3,
+    "image": "assets/images/cards/common/card_2.png",
+    "flavor_text": "Her stealth approach leaves no trace.",
+    "rarity": "common"
+  },
+  "card_3": {
+    "name": "Agent Isabel",
+    "hp": 3,
     "cost": 2,
-    "attack": 0,
-    "image": "assets/images/cards/common/stone_wall.png",
-    "flavor_text": "Solid defense is the best offense.",
+    "attack": 1,
+    "image": "assets/images/cards/common/card_3.png",
+    "flavor_text": "An expert in defensive tactics and crowd control.",
     "rarity": "common"
   },
-  "forest_spirit": {
-    "name": "Forest Spirit",
+  "card_4": {
+    "name": "Agent Amara",
     "hp": 2,
     "cost": 1,
     "attack": 1,
-    "image": "assets/images/cards/common/forest_spirit.png",
-    "flavor_text": "Small but resilient, like the forest itself.",
+    "image": "assets/images/cards/common/card_4.png",
+    "flavor_text": "New to the field but quick to adapt.",
     "rarity": "common"
   },
-  "shadow_strike": {
-    "name": "Shadow Strike",
-    "hp": 2,
-    "cost": 2,
-    "attack": 3,
-    "image": "assets/images/cards/common/shadow_strike.png",
-    "flavor_text": "You won't see it coming until it's too late.",
-    "rarity": "common"
-  },
-  "healing_potion": {
-    "name": "Healing Potion",
-    "hp": 3,
-    "cost": 2,
-    "attack": 0,
-    "image": "assets/images/cards/common/healing_potion.png",
-    "flavor_text": "Tastes terrible, works wonders.",
-    "rarity": "common"
-  },
-  "goblin_scout": {
-    "name": "Goblin Scout",
+  "card_5": {
+    "name": "Agent Zoe",
     "hp": 1,
     "cost": 1,
     "attack": 2,
-    "image": "assets/images/cards/common/goblin_scout.png",
-    "flavor_text": "Quick, sneaky, and disposable.",
+    "image": "assets/images/cards/common/card_5.png",
+    "flavor_text": "Small frame, big impact.",
     "rarity": "common"
   },
-  "thunder_blast": {
-    "name": "Thunder Blast",
-    "hp": 1,
-    "cost": 3,
-    "attack": 4,
-    "image": "assets/images/cards/uncommon/thunder_blast.png",
-    "flavor_text": "The sound follows the destruction.",
-    "rarity": "uncommon"
-  },
-  "elven_archer": {
-    "name": "Elven Archer",
+  "card_6": {
+    "name": "Agent Ruby",
     "hp": 2,
     "cost": 2,
-    "attack": 3,
-    "image": "assets/images/cards/uncommon/elven_archer.png",
-    "flavor_text": "Centuries of practice make perfect aim.",
-    "rarity": "uncommon"
-  },
-  "iron_golem": {
-    "name": "Iron Golem",
-    "hp": 4,
-    "cost": 3,
     "attack": 2,
-    "image": "assets/images/cards/uncommon/iron_golem.png",
-    "flavor_text": "Forged for war, designed for victory.",
-    "rarity": "uncommon"
+    "image": "assets/images/cards/common/card_6.png",
+    "flavor_text": "Always two steps ahead of the enemy.",
+    "rarity": "common"
   },
-  "mana_wyrm": {
-    "name": "Mana Wyrm",
+  "card_7": {
+    "name": "Agent Tessa",
     "hp": 3,
     "cost": 2,
     "attack": 2,
-    "image": "assets/images/cards/uncommon/mana_wyrm.png",
-    "flavor_text": "It feeds on magic and grows stronger.",
-    "rarity": "uncommon"
+    "image": "assets/images/cards/common/card_7.png",
+    "flavor_text": "Her surveillance reports are never wrong.",
+    "rarity": "common"
   },
-  "vampire_bat": {
-    "name": "Vampire Bat",
+  "card_8": {
+    "name": "Agent Layla",
+    "hp": 2,
+    "cost": 1,
+    "attack": 1,
+    "image": "assets/images/cards/common/card_8.png",
+    "flavor_text": "Infiltration is just the beginning.",
+    "rarity": "common"
+  },
+  "card_9": {
+    "name": "Agent Ivy",
+    "hp": 1,
+    "cost": 1,
+    "attack": 3,
+    "image": "assets/images/cards/common/card_9.png",
+    "flavor_text": "Deadly with any weapon, especially her wit.",
+    "rarity": "common"
+  },
+  "card_10": {
+    "name": "Agent Nina",
     "hp": 2,
     "cost": 2,
     "attack": 2,
-    "image": "assets/images/cards/uncommon/vampire_bat.png",
-    "flavor_text": "It draws strength from what it takes.",
+    "image": "assets/images/cards/common/card_10.png",
+    "flavor_text": "Computer expert and digital tracker.",
+    "rarity": "common"
+  },
+  "card_11": {
+    "name": "Agent Harper",
+    "hp": 3,
+    "cost": 2,
+    "attack": 1,
+    "image": "assets/images/cards/common/card_11.png",
+    "flavor_text": "Her bulletproof tactics have saved countless agents.",
+    "rarity": "common"
+  },
+  "card_12": {
+    "name": "Agent Chloe",
+    "hp": 2,
+    "cost": 1,
+    "attack": 2,
+    "image": "assets/images/cards/common/card_12.png",
+    "flavor_text": "Nobody escapes her tracking abilities.",
+    "rarity": "common"
+  },
+  "card_13": {
+    "name": "Agent Emma",
+    "hp": 1,
+    "cost": 1,
+    "attack": 2,
+    "image": "assets/images/cards/common/card_13.png",
+    "flavor_text": "Demolitions expert with precise timing.",
+    "rarity": "common"
+  },
+  "card_14": {
+    "name": "Agent Rose",
+    "hp": 2,
+    "cost": 2,
+    "attack": 3,
+    "image": "assets/images/cards/common/card_14.png",
+    "flavor_text": "Appearances can be deceiving, especially hers.",
+    "rarity": "common"
+  },
+  "card_15": {
+    "name": "Agent Willow",
+    "hp": 3,
+    "cost": 2,
+    "attack": 1,
+    "image": "assets/images/cards/common/card_15.png",
+    "flavor_text": "Provides impenetrable cover for field teams.",
+    "rarity": "common"
+  },
+  "card_16": {
+    "name": "Agent Luna",
+    "hp": 1,
+    "cost": 1,
+    "attack": 3,
+    "image": "assets/images/cards/common/card_16.png",
+    "flavor_text": "Operates best under the cover of darkness.",
+    "rarity": "common"
+  },
+  "card_17": {
+    "name": "Agent Daisy",
+    "hp": 2,
+    "cost": 1,
+    "attack": 2,
+    "image": "assets/images/cards/common/card_17.png",
+    "flavor_text": "Unassuming but lethal when necessary.",
+    "rarity": "common"
+  },
+  "card_18": {
+    "name": "Agent Piper",
+    "hp": 2,
+    "cost": 2,
+    "attack": 2,
+    "image": "assets/images/cards/common/card_18.png",
+    "flavor_text": "Communications specialist who never misses a signal.",
+    "rarity": "common"
+  },
+  "card_19": {
+    "name": "Agent Quinn",
+    "hp": 3,
+    "cost": 2,
+    "attack": 2,
+    "image": "assets/images/cards/common/card_19.png",
+    "flavor_text": "Her interrogation techniques are unmatched.",
+    "rarity": "common"
+  },
+  "card_20": {
+    "name": "Agent Natasha",
+    "hp": 3,
+    "cost": 2,
+    "attack": 3,
+    "image": "assets/images/cards/uncommon/card_20.png",
+    "flavor_text": "Former ballerina with deadly precision.",
     "rarity": "uncommon"
   },
-  "phoenix_feather": {
-    "name": "Phoenix Feather",
+  "card_21": {
+    "name": "Agent Victoria",
     "hp": 2,
+    "cost": 2,
+    "attack": 4,
+    "image": "assets/images/cards/uncommon/card_21.png",
+    "flavor_text": "Her targets never see her coming.",
+    "rarity": "uncommon"
+  },
+  "card_22": {
+    "name": "Agent Cassandra",
+    "hp": 4,
+    "cost": 2,
+    "attack": 2,
+    "image": "assets/images/cards/uncommon/card_22.png",
+    "flavor_text": "Psychologist turned field agent with uncanny intuition.",
+    "rarity": "uncommon"
+  },
+  "card_23": {
+    "name": "Agent Scarlett",
+    "hp": 3,
     "cost": 3,
     "attack": 3,
-    "image": "assets/images/cards/rare/phoenix_feather.png",
-    "flavor_text": "Even a single feather burns with eternal flame.",
+    "image": "assets/images/cards/uncommon/card_23.png",
+    "flavor_text": "Infiltration specialist with high-level clearance.",
+    "rarity": "uncommon"
+  },
+  "card_24": {
+    "name": "Agent Alexa",
+    "hp": 2,
+    "cost": 2,
+    "attack": 4,
+    "image": "assets/images/cards/uncommon/card_24.png",
+    "flavor_text": "Expert markswoman who never wastes a bullet.",
+    "rarity": "uncommon"
+  },
+  "card_25": {
+    "name": "Agent Kira",
+    "hp": 3,
+    "cost": 3,
+    "attack": 4,
+    "image": "assets/images/cards/uncommon/card_25.png",
+    "flavor_text": "Deep cover operative with multiple identities.",
+    "rarity": "uncommon"
+  },
+  "card_26": {
+    "name": "Agent Olivia",
+    "hp": 4,
+    "cost": 3,
+    "attack": 3,
+    "image": "assets/images/cards/uncommon/card_26.png",
+    "flavor_text": "Tactical genius with a perfect mission record.",
+    "rarity": "uncommon"
+  },
+  "card_27": {
+    "name": "Agent Valentina",
+    "hp": 4,
+    "cost": 3,
+    "attack": 4,
+    "image": "assets/images/cards/rare/card_27.png",
+    "flavor_text": "Legendary assassin who can disappear without a trace.",
     "rarity": "rare"
   },
-  "dragon_scale": {
-    "name": "Dragon Scale",
+  "card_28": {
+    "name": "Agent Diana",
     "hp": 5,
     "cost": 3,
     "attack": 3,
-    "image": "assets/images/cards/rare/dragon_scale.png",
-    "flavor_text": "Harder than steel, lighter than leather.",
+    "image": "assets/images/cards/rare/card_28.png",
+    "flavor_text": "Field commander with nerves of steel.",
     "rarity": "rare"
   },
-  "enchanted_blade": {
-    "name": "Enchanted Blade",
+  "card_29": {
+    "name": "Agent Athena",
     "hp": 3,
     "cost": 3,
     "attack": 5,
-    "image": "assets/images/cards/rare/enchanted_blade.png",
-    "flavor_text": "The runes glow brighter with each strike.",
+    "image": "assets/images/cards/rare/card_29.png",
+    "flavor_text": "Strategic mastermind who can predict enemy movements.",
     "rarity": "rare"
   },
-  "archmage": {
-    "name": "Archmage",
-    "hp": 4,
-    "cost": 3,
-    "attack": 4,
-    "image": "assets/images/cards/epic/archmage.png",
-    "flavor_text": "Master of all magical arts, servant to none.",
-    "rarity": "epic"
-  },
-  "ancient_dragon": {
-    "name": "Ancient Dragon",
+  "card_30": {
+    "name": "Director Samantha",
     "hp": 6,
     "cost": 3,
     "attack": 6,
-    "image": "assets/images/cards/epic/ancient_dragon.png",
-    "flavor_text": "It has seen empires rise and fall like changing seasons.",
+    "image": "assets/images/cards/epic/card_30.png",
+    "flavor_text": "The shadow behind every successful operation in the agency's history.",
     "rarity": "epic"
   }
 }
