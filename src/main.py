@@ -7,6 +7,9 @@ from models.card import Card
 from models.player import Player
 from models.deck import Deck
 from models.game_state import GameState, GamePhase
+from controllers.game_controller import GameController
+from controllers.player_controller import PlayerController
+from controllers.ai_controller import AIController
 from utils.resource_loader import ResourceLoader
 from utils.save_manager import SaveManager
 from constants import PLAYER_STARTING_HAND_SIZE
@@ -17,7 +20,7 @@ def initialize_game():
     Initialize the game by loading resources and setting up players.
     
     Returns:
-        tuple: Containing game_state, card_database
+        tuple: Containing game controllers and card database
     """
     print("Initializing game...")
     
@@ -46,12 +49,20 @@ def initialize_game():
     # Create game state
     game_state = GameState(player, opponent)
     
+    # Initialize controllers
+    game_controller = GameController(game_state)
+    player_controller = PlayerController(game_state)
+    ai_controller = AIController(game_state)
+    
+    # Start a new game
+    game_controller.start_game()
+    
     # Draw starting hands
     player.draw_starting_hand(PLAYER_STARTING_HAND_SIZE)
     opponent.draw_starting_hand(PLAYER_STARTING_HAND_SIZE)
     
     print("Game initialized!")
-    return game_state, card_database
+    return game_state, game_controller, player_controller, ai_controller, card_database
 
 
 def display_game_state(game_state):
@@ -100,68 +111,143 @@ def display_game_state(game_state):
     print("\n" + "=" * 50)
 
 
-def simple_game_loop(game_state, card_database):
+def game_loop_with_controllers(
+    game_state: GameState,
+    game_controller: GameController,
+    player_controller: PlayerController,
+    ai_controller: AIController
+):
     """
-    Run a simple game loop for demonstration purposes.
+    Run the game loop using the controller pattern.
     
     Args:
         game_state (GameState): The game state
-        card_database (dict): Dictionary of all cards
+        game_controller (GameController): The game controller
+        player_controller (PlayerController): The player controller
+        ai_controller (AIController): The AI controller
     """
-    max_turns = 3  # Just run a few turns for demo
+    max_turns = 10  # Set a reasonable limit for demo purposes
     
-    for _ in range(max_turns):
-        if game_state.game_over:
-            break
-            
+    # Main game loop
+    while not game_state.game_over and game_state.turn_number <= max_turns:
         # Display current state
         display_game_state(game_state)
         
-        # For demo purposes, just auto-play first card to first empty slot
-        if game_state.current_phase == GamePhase.PLAY and game_state.current_player.hand:
-            for field_index in range(len(game_state.current_player.field)):
-                if game_state.current_player.field[field_index] is None:
-                    success, message = game_state.current_player.play_card(0, field_index)
-                    print(f"Playing card: {message}")
-                    if success:
-                        break
+        # Process current phase
+        events = game_controller.process_turn()
         
-        # Move to next phase
-        print(f"Moving to next phase: {game_state.next_phase().name}")
-        
-        # If in attack phase, simulate attacks
-        if game_state.current_phase == GamePhase.ATTACK:
-            # In a real game, this would be more complex with card interactions
-            print("Simulating attacks...")
-            attacker = game_state.current_player
-            defender = game_state.other_player
+        # Handle events based on current phase
+        if game_state.current_phase == GamePhase.DRAW:
+            # Just show what happened in draw phase
+            for event in events["events"]:
+                if event["type"] == "draw":
+                    print(f"{event['player']} drew {event['card']}")
+                elif event["type"] == "deck_empty":
+                    print(f"{event['player']} has no more cards to draw!")
+                    
+            # Move to play phase
+            print(f"Moving to {game_controller.advance_phase().name} phase")
             
-            for slot, card in enumerate(attacker.field):
-                if card:
-                    # If there's a card in the same slot for the defender, attack it
-                    if defender.field[slot]:
-                        defender_card = defender.field[slot]
-                        print(f"{card.name} attacks {defender_card.name}")
-                        excess = defender_card.take_damage(card.attack)
-                        if not defender_card.is_alive():
-                            print(f"{defender_card.name} is destroyed!")
-                            defender.field[slot] = None
+        elif game_state.current_phase == GamePhase.PLAY:
+            # If AI's turn, let AI play cards
+            if game_state.current_player == game_state.opponent:
+                ai_results = ai_controller.take_turn()
+                
+                for event in ai_results["events"]:
+                    if event["type"] == "ai_card_played":
+                        print(f"AI plays {event['card']} to position {event['field_position']}")
+                
+                # AI automatically ends play phase
+                print(f"AI ends play phase")
+                print(f"Moving to {game_controller.advance_phase().name} phase")
+            else:
+                # Human player's turn - let them play cards
+                play_phase_done = False
+                
+                while not play_phase_done:
+                    # Show playable cards
+                    playable_cards = player_controller.get_playable_cards(game_state.player)
+                    placement_options = player_controller.get_card_placement_options(game_state.player)
+                    
+                    print("\nPlayable Cards:")
+                    for card in playable_cards:
+                        status = "✓" if card["playable"] else "✗"
+                        print(f"  [{card['index']}] {card['card']} (Cost: {card['cost']}) {status}")
+                    
+                    print("\nPlacement Options:")
+                    for option in placement_options:
+                        status = "Empty" if option["available"] else f"Occupied by {option['current_card']}"
+                        print(f"  Position {option['index']}: {status}")
+                    
+                    # Get player input
+                    action = input("\nEnter action (p = play card, e = end phase): ").strip().lower()
+                    
+                    if action == 'p':
+                        try:
+                            hand_idx = int(input("Enter card index from hand: "))
+                            field_idx = int(input("Enter field position: "))
                             
-                            # Apply excess damage to player
-                            if excess > 0:
-                                defender.take_damage(excess)
-                                print(f"{excess} damage goes through to {defender.name}")
+                            result = player_controller.play_card(game_state.player, hand_idx, field_idx)
+                            
+                            if result["success"]:
+                                print(f"Played card successfully: {result['message']}")
+                            else:
+                                print(f"Failed to play card: {result['message']}")
+                                
+                        except ValueError:
+                            print("Please enter valid numbers")
+                    
+                    elif action == 'e':
+                        result = player_controller.end_play_phase(game_state.player)
+                        if result["success"]:
+                            play_phase_done = True
+                            print(f"Moving to {game_controller.advance_phase().name} phase")
+                        else:
+                            print(result["message"])
+                    
                     else:
-                        # Direct attack
-                        defender.take_damage(card.attack)
-                        print(f"{card.name} attacks {defender.name} directly for {card.attack} damage!")
+                        print("Invalid action")
+        
+        elif game_state.current_phase == GamePhase.ATTACK:
+            # Show attack results
+            for event in events["events"]:
+                if event["type"] == "card_attack":
+                    print(f"{event['attacker']} attacks {event['defender']} for {event['attack_damage']} damage")
+                elif event["type"] == "card_counter_attack":
+                    print(f"{event['attacker']} counter-attacks {event['defender']} for {event['attack_damage']} damage")
+                elif event["type"] == "card_destroyed":
+                    print(f"{event['card']} was destroyed!")
+                elif event["type"] == "player_damage":
+                    print(f"{event['player']} takes {event['damage']} damage from {event['source']}")
+                elif event["type"] == "game_over":
+                    print(f"Game Over! Winner: {event['winner']}")
+                    if "credits_awarded" in event:
+                        print(f"{event['player']} received {event['amount']} credits")
             
-            # Check if game is over
-            if game_state.check_game_over():
-                print(f"Game over! Winner: {game_state.winner.name}")
+            # Move to end phase
+            if not game_state.game_over:
+                print(f"Moving to {game_controller.advance_phase().name} phase")
+        
+        elif game_state.current_phase == GamePhase.END:
+            # End phase is mostly bookkeeping
+            print(f"End of turn {game_state.turn_number}")
+            print(f"Moving to {game_controller.advance_phase().name} phase")
+            
+            # Check for game over after turn change
+            if game_state.game_over:
+                print(f"Game Over! Winner: {game_state.winner.name}")
                 break
+                
+            # Pause between turns for readability
+            input("Press Enter to continue to next turn...")
     
-    print("\nDemo game loop completed.")
+    # End of game
+    if game_state.turn_number > max_turns:
+        print(f"\nReached maximum turns ({max_turns}).")
+    
+    print("\nFinal game state:")
+    display_game_state(game_state)
+    print("\nGame complete!")
 
 
 def main():
@@ -170,10 +256,10 @@ def main():
     """
     try:
         # Initialize the game
-        game_state, card_database = initialize_game()
+        game_state, game_controller, player_controller, ai_controller, card_database = initialize_game()
         
-        # Run a simple game loop for demonstration
-        simple_game_loop(game_state, card_database)
+        # Run the game
+        game_loop_with_controllers(game_state, game_controller, player_controller, ai_controller)
         
         # Save player state
         SaveManager.save_player(game_state.player)
