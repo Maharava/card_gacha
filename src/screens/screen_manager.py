@@ -2,6 +2,8 @@
 Screen manager for handling screen transitions and management.
 """
 import pygame
+
+# Fixed imports
 from src.screens.screen import Screen
 
 

@@ -3,11 +3,13 @@ Deck building screen for the card game.
 """
 import pygame
 import os
-from .screen import Screen
-from .ui_elements import Button, Label, Panel, CardRenderer
-from ..models.deck import Deck
-from ..utils.resource_loader import ResourceLoader
-from ..utils.save_manager import SaveManager
+
+# Fixed imports
+from src.screens.screen import Screen
+from src.screens.ui_elements import Button, Label, Panel, CardRenderer
+from src.models.deck import Deck
+from src.utils.resource_loader import ResourceLoader
+from src.utils.save_manager import SaveManager
 
 
 class DeckBuildingScreen(Screen):

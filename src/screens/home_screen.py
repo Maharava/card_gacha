@@ -3,8 +3,8 @@ Home screen for the card game.
 """
 import pygame
 import os
-from .screen import Screen
-from .ui_elements import Button, Label, Panel
+
+# Fixed imports
 from src.screens.screen import Screen
 from src.screens.ui_elements import Button, Label, Panel
 

@@ -4,11 +4,13 @@ Shop screen for the card game.
 import pygame
 import os
 import random
-from .screen import Screen
-from .ui_elements import Button, Label, Panel, CardRenderer
-from ..utils.resource_loader import ResourceLoader
-from ..utils.save_manager import SaveManager
-from ..constants import SHOP_CARDS_OFFERED, SHOP_COST, RARITY_PROBABILITIES
+
+# Fixed imports
+from src.screens.screen import Screen
+from src.screens.ui_elements import Button, Label, Panel, CardRenderer
+from src.utils.resource_loader import ResourceLoader
+from src.utils.save_manager import SaveManager
+from src.constants import SHOP_CARDS_OFFERED, SHOP_COST, RARITY_PROBABILITIES
 
 
 class ShopScreen(Screen):

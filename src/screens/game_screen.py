@@ -1,3 +1,10 @@
+"""
+Game screen for the card game, displaying the game board and handling user interactions.
+"""
+import pygame
+import os
+
+# Fixed imports
 from src.screens.screen import Screen
 from src.screens.ui_elements import Button, Label, Panel, ProgressBar, CardRenderer
 from src.models.game_state import GameState, GamePhase

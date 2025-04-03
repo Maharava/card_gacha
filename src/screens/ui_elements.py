@@ -4,6 +4,8 @@ UI elements for the card game.
 import pygame
 import pygame.freetype
 
+# No relative imports to fix in this file
+
 
 class Button:
     """

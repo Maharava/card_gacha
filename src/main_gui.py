@@ -7,7 +7,7 @@ import os
 import sys
 import time
 
-# Fix imports to use the correct package structure
+# Fixed imports
 from src.screens.screen_manager import ScreenManager
 from src.screens.home_screen import HomeScreen
 from src.screens.game_screen import GameScreen

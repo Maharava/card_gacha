@@ -3,6 +3,8 @@ Base screen class for the card game UI.
 """
 import pygame
 
+# No relative imports to fix in this file
+
 
 class Screen:
     """
