@@ -3,22 +3,26 @@ Main entry point for the card game.
 """
 import os
 import sys
+import argparse
 from models.card import Card
 from models.player import Player
 from models.deck import Deck
 from models.game_state import GameState, GamePhase
 from controllers.game_controller import GameController
 from controllers.player_controller import PlayerController
-from controllers.ai_controller import AIController
+from controllers.ai_controller import AIController, create_ai_opponent
 from utils.resource_loader import ResourceLoader
 from utils.save_manager import SaveManager
 from constants import PLAYER_STARTING_HAND_SIZE
 
 
-def initialize_game():
+def initialize_game(difficulty="normal"):
     """
     Initialize the game by loading resources and setting up players.
     
+    Args:
+        difficulty (str): AI difficulty level ('easy', 'normal', 'hard')
+        
     Returns:
         tuple: Containing game controllers and card database
     """
@@ -42,9 +46,9 @@ def initialize_game():
         player.credits = 50  # Give some starting credits
         SaveManager.save_player(player)
     
-    # Create an AI opponent
-    ai_deck = Deck.create_starter_deck(card_database)
-    opponent = Player("AI Opponent", ai_deck)
+    # Create an AI opponent with appropriate difficulty
+    opponent = create_ai_opponent(card_database, difficulty)
+    print(f"Created AI opponent: {opponent.name}")
     
     # Create game state
     game_state = GameState(player, opponent)
@@ -52,7 +56,9 @@ def initialize_game():
     # Initialize controllers
     game_controller = GameController(game_state)
     player_controller = PlayerController(game_state)
-    ai_controller = AIController(game_state)
+    
+    # Create AI controller with appropriate difficulty
+    ai_controller = AIController.create_for_difficulty(game_state, difficulty)
     
     # Start a new game
     game_controller.start_game()
@@ -84,27 +90,35 @@ def display_game_state(game_state):
     # Display player hand
     print("\nHand:")
     for i, card in enumerate(game_state.player.hand):
-        print(f"  {i}: {card.name} (Cost: {card.cost}, ATK: {card.attack}, HP: {card.hp})")
+        print(f"  {i}: {card.name} (Cost: {card.cost}, ATK: {card.attack}, HP: {card.hp}) [{card.rarity}]")
     
     # Display player field
     print("\nField:")
     for i, card in enumerate(game_state.player.field):
         if card:
-            print(f"  {i}: {card.name} (ATK: {card.attack}, HP: {card.hp})")
+            print(f"  {i}: {card.name} (ATK: {card.attack}, HP: {card.hp}) [{card.rarity}]")
         else:
             print(f"  {i}: Empty")
     
     print("\n" + "-" * 50)
     
-    # Display opponent info
-    print(f"\nOpponent: {game_state.opponent.name}")
+    # Display opponent info with difficulty indication
+    difficulty_indicator = ""
+    if "easy" in game_state.opponent.name.lower():
+        difficulty_indicator = "👶"
+    elif "normal" in game_state.opponent.name.lower():
+        difficulty_indicator = "👤"
+    elif "hard" in game_state.opponent.name.lower():
+        difficulty_indicator = "👺"
+        
+    print(f"\nOpponent: {game_state.opponent.name} {difficulty_indicator}")
     print(f"Health: {game_state.opponent.health}/{game_state.opponent.max_health} | Energy: {game_state.opponent.energy}/{game_state.opponent.max_energy}")
     
     # Display opponent field
     print("\nField:")
     for i, card in enumerate(game_state.opponent.field):
         if card:
-            print(f"  {i}: {card.name} (ATK: {card.attack}, HP: {card.hp})")
+            print(f"  {i}: {card.name} (ATK: {card.attack}, HP: {card.hp}) [{card.rarity}]")
         else:
             print(f"  {i}: Empty")
     
@@ -254,9 +268,28 @@ def main():
     """
     Main function to run the game.
     """
+    # Parse command line arguments for difficulty
+    parser = argparse.ArgumentParser(description='Card Game')
+    parser.add_argument('--difficulty', type=str, default='normal',
+                       help='AI difficulty (easy, normal, hard)')
+    
+    args = parser.parse_args()
+    difficulty = args.difficulty.lower()
+    
+    # Validate difficulty
+    if difficulty not in ['easy', 'normal', 'hard']:
+        print(f"Invalid difficulty: {difficulty}. Using 'normal' instead.")
+        difficulty = 'normal'
+    
     try:
-        # Initialize the game
-        game_state, game_controller, player_controller, ai_controller, card_database = initialize_game()
+        # Initialize the game with the specified difficulty
+        game_state, game_controller, player_controller, ai_controller, card_database = initialize_game(difficulty)
+        
+        # Display AI information
+        ai_opponent = game_state.opponent
+        print(f"\nYou're playing against: {ai_opponent.name}")
+        print(f"AI Strategy: {ai_controller.personality.value}")
+        print(f"AI Deck: {ai_opponent.deck.name} ({ai_opponent.deck.size()} cards)")
         
         # Run the game
         game_loop_with_controllers(game_state, game_controller, player_controller, ai_controller)
