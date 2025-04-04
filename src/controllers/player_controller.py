@@ -46,8 +46,23 @@ class PlayerController:
         if self.game_state.current_player != player:
             return False, "It's not your turn"
         
-        # Validate the action using the player's logic
-        return player.play_card(hand_index, field_index)
+        # Validate indices
+        if not (0 <= hand_index < len(player.hand)):
+            return False, "Invalid hand index"
+        
+        if not (0 <= field_index < PLAYER_FIELD_SIZE):
+            return False, "Invalid field index"
+        
+        # Check if the field position is occupied
+        if player.field[field_index] is not None:
+            return False, "Field position already occupied"
+        
+        # Check energy
+        card = player.hand[hand_index]
+        if player.energy < card.cost:
+            return False, "Not enough energy"
+        
+        return True, "Card can be played"
     
     def play_card(self, player: Player, hand_index: int, field_index: int) -> Dict[str, Any]:
         """
@@ -70,7 +85,12 @@ class PlayerController:
         }
         
         if success:
-            # The card was already moved in play_card, just record the event
+            # Now actually play the card
+            card = player.hand[hand_index]
+            player.energy -= card.cost
+            player.field[field_index] = player.hand.pop(hand_index)
+            
+            # Record the event
             result["events"].append({
                 "type": "card_played",
                 "player": player.name,

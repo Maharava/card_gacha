@@ -1,7 +1,7 @@
 """
 Player model for the card game.
 """
-from typing import List, Optional, Dict, Tuple
+from typing import List, Optional, Dict, Tuple, Any
 from .card import Card
 from .deck import Deck
 from ..constants import (
@@ -253,3 +253,73 @@ class Player:
         player.credits = player_data.get("credits", 0)
         
         return player
+
+
+class PlayerController:
+    """
+    Controller for player actions in the game.
+    """
+    
+    def __init__(self, game_state):
+        """
+        Initialize the PlayerController.
+        
+        Args:
+            game_state: The current state of the game
+        """
+        self.game_state = game_state
+    
+    def can_play_card(self, player: Player, hand_index: int, field_index: int) -> Tuple[bool, str]:
+        """Check if a card can be played without modifying game state"""
+        # Check if it's the play phase
+        if self.game_state.current_phase != GamePhase.PLAY:
+            return False, "You can only play cards during the play phase"
+        
+        # Check if it's the player's turn
+        if self.game_state.current_player != player:
+            return False, "It's not your turn"
+        
+        # Validate indices
+        if not (0 <= hand_index < len(player.hand)):
+            return False, "Invalid hand index"
+        
+        if not (0 <= field_index < PLAYER_FIELD_SIZE):
+            return False, "Invalid field index"
+        
+        # Check if the field position is occupied
+        if player.field[field_index] is not None:
+            return False, "Field position already occupied"
+        
+        # Check energy
+        card = player.hand[hand_index]
+        if player.energy < card.cost:
+            return False, "Not enough energy"
+        
+        return True, "Card can be played"
+
+    def play_card(self, player: Player, hand_index: int, field_index: int) -> Dict[str, Any]:
+        """Play a card if validation passes"""
+        success, message = self.can_play_card(player, hand_index, field_index)
+        
+        result = {
+            "success": success,
+            "message": message,
+            "events": []
+        }
+        
+        if success:
+            # Now actually play the card
+            card = player.hand[hand_index]
+            player.energy -= card.cost
+            player.field[field_index] = player.hand.pop(hand_index)
+            
+            # Record the event
+            result["events"].append({
+                "type": "card_played",
+                "player": player.name,
+                "card": player.field[field_index].name,
+                "field_position": field_index,
+                "energy_remaining": player.energy
+            })
+        
+        return result
