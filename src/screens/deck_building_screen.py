@@ -127,13 +127,22 @@ class DeckBuildingScreen(Screen):
         )
         collection_panel.add_element(filter_label)
         
-        # Filter by rarity buttons
-        button_width = 70
-        button_spacing = 5
+        # Use percentage-based positioning for filter buttons
+        panel_width = collection_panel.rect.width - 40  # Account for margins
+        
+        # Filter by rarity buttons (use percentage of panel width)
+        button_width = panel_width // 6  # Divide available width
+        button_spacing = (panel_width - button_width * 5) // 4  # Distribute remaining space
         button_y = 50
         
+        # Calculate positions based on available width
+        button_positions = []
+        for i in range(5):
+            x_pos = 100 + i * (button_width + button_spacing)
+            button_positions.append(x_pos)
+        
         all_button = Button(
-            pygame.Rect(100, button_y, button_width, 25),
+            pygame.Rect(button_positions[0], button_y, button_width, 25),
             "All",
             lambda: self._set_rarity_filter("all"),
             color=(80, 80, 100),
@@ -143,7 +152,7 @@ class DeckBuildingScreen(Screen):
         collection_panel.add_element(all_button)
         
         common_button = Button(
-            pygame.Rect(100 + (button_width + button_spacing), button_y, button_width, 25),
+            pygame.Rect(button_positions[1], button_y, button_width, 25),
             "Common",
             lambda: self._set_rarity_filter("common"),
             color=(80, 80, 100),
@@ -153,7 +162,7 @@ class DeckBuildingScreen(Screen):
         collection_panel.add_element(common_button)
         
         uncommon_button = Button(
-            pygame.Rect(100 + (button_width + button_spacing) * 2, button_y, button_width, 25),
+            pygame.Rect(button_positions[2], button_y, button_width, 25),
             "Uncommon",
             lambda: self._set_rarity_filter("uncommon"),
             color=(80, 80, 100),
@@ -163,7 +172,7 @@ class DeckBuildingScreen(Screen):
         collection_panel.add_element(uncommon_button)
         
         rare_button = Button(
-            pygame.Rect(100 + (button_width + button_spacing) * 3, button_y, button_width, 25),
+            pygame.Rect(button_positions[3], button_y, button_width, 25),
             "Rare",
             lambda: self._set_rarity_filter("rare"),
             color=(80, 80, 100),
@@ -173,7 +182,7 @@ class DeckBuildingScreen(Screen):
         collection_panel.add_element(rare_button)
         
         epic_button = Button(
-            pygame.Rect(100 + (button_width + button_spacing) * 4, button_y, button_width, 25),
+            pygame.Rect(button_positions[4], button_y, button_width, 25),
             "Epic",
             lambda: self._set_rarity_filter("epic"),
             color=(80, 80, 100),
@@ -764,13 +773,11 @@ class DeckBuildingScreen(Screen):
         self._show_deck_name_dialog(create_new=True)
     
     def _show_deck_name_dialog(self, create_new=True, old_name=None):
-        """
-        Show a dialog to input the deck name.
+        """Show a dialog to input the deck name."""
+        # Create semi-transparent overlay for the entire screen
+        self.dialog_overlay = pygame.Surface((self.width, self.height), pygame.SRCALPHA)
+        self.dialog_overlay.fill((0, 0, 0, 150))  # Semi-transparent black
         
-        Args:
-            create_new (bool): Whether to create a new deck or rename an existing one
-            old_name (str, optional): Name of the deck to rename
-        """
         # Create dialog panel
         dialog_panel = Panel(
             pygame.Rect(self.width // 2 - 150, self.height // 2 - 100, 300, 200),
@@ -831,11 +838,12 @@ class DeckBuildingScreen(Screen):
         )
         dialog_panel.add_element(cancel_button)
         
-        # Store the dialog
+        # Store the dialog and add to UI elements
         self.deck_name_dialog = dialog_panel
         self.deck_name_input_border = input_border_rect
         
-        # Add to UI elements
+        # Add overlay first, then dialog (in correct z-order)
+        self.ui_elements.append(self.dialog_overlay)
         self.ui_elements.append(dialog_panel)
     
     def _create_new_deck(self):
@@ -1125,6 +1133,17 @@ class DeckBuildingScreen(Screen):
         # Update status label
         self.status_label.set_text(message)
         self.status_label.color = color
+        
+        # Add a background to the status label for better readability
+        label_rect = self.status_label.rect
+        bg_color = (40, 45, 60, 200)  # Semi-transparent background
+        
+        # Create and store background surface
+        self.status_bg = pygame.Surface((label_rect.width, label_rect.height), pygame.SRCALPHA)
+        self.status_bg.fill(bg_color)
+        pygame.draw.rect(self.status_bg, (80, 90, 120, 200), 
+                       pygame.Rect(0, 0, label_rect.width, label_rect.height), 
+                       width=1, border_radius=5)
     
     def handle_event(self, event):
         """
@@ -1327,19 +1346,33 @@ class DeckBuildingScreen(Screen):
         # Draw background
         self.display.fill(self.background_color)
         
-        # Render UI elements
-        for element in self.ui_elements:
+        # Render UI elements (standard panels first)
+        base_elements = [elem for elem in self.ui_elements 
+                        if elem not in [self.deck_name_dialog] 
+                        and not hasattr(self, 'dialog_overlay') or elem != self.dialog_overlay]
+        
+        for element in base_elements:
             element.render(self.display)
         
-        # Render collection cards
+        # Render collection cards and deck cards
         self._render_collection()
-        
-        # Render deck cards
         self._render_deck()
         
-        # Render deck name dialog input field
-        if hasattr(self, 'deck_name_dialog') and hasattr(self, 'deck_name_input_border'):
+        # Now render dialog overlay and dialogs on top
+        if hasattr(self, 'dialog_overlay') and self.dialog_overlay in self.ui_elements:
+            self.display.blit(self.dialog_overlay, (0, 0))
+            
+        if hasattr(self, 'deck_name_dialog') and self.deck_name_dialog in self.ui_elements:
+            self.deck_name_dialog.render(self.display)
             pygame.draw.rect(self.display, (80, 80, 100), self.deck_name_input_border, width=2)
+            # Add highlight for input field
+            pygame.draw.rect(self.display, (100, 100, 150, 128), self.deck_name_input_border, width=0)
+        
+        # Draw status message background if message exists
+        if self.status_message and hasattr(self, 'status_bg'):
+            status_rect = self.status_label.rect
+            offset_rect = status_rect.move(self.ui_elements[3].rect.left, self.ui_elements[3].rect.top)
+            self.display.blit(self.status_bg, offset_rect)
     
     def _render_collection(self):
         """Render the player's card collection."""
@@ -1377,7 +1410,7 @@ class DeckBuildingScreen(Screen):
             qty_rect.center = quantity_bg.center
             self.display.blit(qty_surf, qty_rect)
             
-            # Add "Add to Deck" hint for cards that can be added
+            # Add "Add to Deck" hint with background
             if self.current_deck:
                 card_count = sum(1 for c in self.current_deck.cards if c.id == card.id)
                 can_add = (len(self.current_deck.cards) < Deck.MAX_DECK_SIZE and 
@@ -1385,9 +1418,28 @@ class DeckBuildingScreen(Screen):
                 
                 if can_add:
                     hint_font = pygame.freetype.SysFont('Arial', 10)
-                    hint_surf, hint_rect = hint_font.render("Click to add", (180, 180, 180))
-                    hint_rect.centerx = card_rect.centerx
-                    hint_rect.bottom = card_rect.bottom - 5
+                    hint_text = "Click to add"
+                    hint_surf, hint_rect = hint_font.render(hint_text, (220, 220, 220))
+                    
+                    # Create background for text
+                    bg_rect = hint_rect.copy()
+                    bg_rect.width += 10  # Padding
+                    bg_rect.height += 6
+                    bg_rect.centerx = card_rect.centerx
+                    bg_rect.bottom = card_rect.bottom - 5
+                    
+                    # Draw semi-transparent background
+                    bg_surface = pygame.Surface((bg_rect.width, bg_rect.height), pygame.SRCALPHA)
+                    bg_surface.fill((40, 45, 60, 180))  # Semi-transparent background
+                    pygame.draw.rect(bg_surface, (80, 90, 120, 200), 
+                                    pygame.Rect(0, 0, bg_rect.width, bg_rect.height), 
+                                    width=1, border_radius=3)
+                    
+                    self.display.blit(bg_surface, bg_rect)
+                    
+                    # Position text over background
+                    hint_rect.centerx = bg_rect.centerx
+                    hint_rect.centery = bg_rect.centery
                     self.display.blit(hint_surf, hint_rect)
     
     def _render_deck(self):

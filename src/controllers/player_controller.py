@@ -5,6 +5,7 @@ from typing import Tuple, List, Dict, Any, Optional
 from ..models.game_state import GameState, GamePhase
 from ..models.player import Player
 from ..models.card import Card
+from ..constants import PLAYER_FIELD_SIZE  # Add this import
 
 
 class PlayerController:
@@ -76,7 +77,24 @@ class PlayerController:
         Returns:
             Dict[str, Any]: Result of the action including success flag and events
         """
-        success, message = self.can_play_card(player, hand_index, field_index)
+        # First check game-state specific conditions
+        if self.game_state.current_phase != GamePhase.PLAY:
+            return {
+                "success": False,
+                "message": "You can only play cards during the play phase",
+                "events": []
+            }
+        
+        if self.game_state.current_player != player:
+            return {
+                "success": False,
+                "message": "It's not your turn",
+                "events": []
+            }
+        
+        # Use player's own validation and card playing logic
+        card_name = player.hand[hand_index].name if 0 <= hand_index < len(player.hand) else "Unknown"
+        success, message = player.play_card(hand_index, field_index)
         
         result = {
             "success": success,
@@ -85,16 +103,11 @@ class PlayerController:
         }
         
         if success:
-            # Now actually play the card
-            card = player.hand[hand_index]
-            player.energy -= card.cost
-            player.field[field_index] = player.hand.pop(hand_index)
-            
             # Record the event
             result["events"].append({
                 "type": "card_played",
                 "player": player.name,
-                "card": player.field[field_index].name,
+                "card": card_name,
                 "field_position": field_index,
                 "energy_remaining": player.energy
             })

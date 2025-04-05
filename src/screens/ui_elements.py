@@ -324,6 +324,24 @@ class Panel:
                 if hasattr(element, 'render'):
                     element.render(surface)
 
+    def check_element_bounds(self, element):
+        """Ensure element fits within panel bounds"""
+        if not hasattr(element, 'rect'):
+            return
+            
+        # Check if element exceeds panel boundaries
+        if (element.rect.right > self.rect.width or
+            element.rect.bottom > self.rect.height):
+            
+            # Scale element to fit if needed
+            scale_x = min(1.0, self.rect.width / element.rect.right)
+            scale_y = min(1.0, self.rect.height / element.rect.bottom)
+            scale = min(scale_x, scale_y)
+            
+            if scale < 1.0:
+                element.rect.width = int(element.rect.width * scale)
+                element.rect.height = int(element.rect.height * scale)
+
 
 class ProgressBar:
     """
@@ -554,4 +572,97 @@ class CardRenderer:
         rarity_color = self.rarity_colors.get(card.rarity, (150, 150, 150))
         pygame.draw.rect(surface, rarity_color, (card_rect.right - 25, card_rect.top + 5, 20, 5), border_radius=2)
         
+        # Draw selection border with glow effect
+        if selected:
+            # Create highlight effect
+            padding = 4
+            highlight_rect = pygame.Rect(
+                card_rect.left - padding,
+                card_rect.top - padding,
+                card_rect.width + padding * 2,
+                card_rect.height + padding * 2
+            )
+            
+            # Draw outer glow (multiple layers for effect)
+            colors = [
+                (255, 215, 0, 150),  # Gold, semi-transparent
+                (255, 215, 0, 100),
+                (255, 215, 0, 50)
+            ]
+            
+            for i, color in enumerate(colors):
+                expanded_rect = highlight_rect.inflate(i*2, i*2)
+                pygame.draw.rect(surface, color, expanded_rect, 
+                               border_radius=5)
+                
+            # Draw border
+            pygame.draw.rect(surface, (255, 215, 0), highlight_rect, 
+                           width=2, border_radius=5)
+        
         return card_rect
+
+
+class UILayout:
+    """Manages responsive UI layouts"""
+    
+    def __init__(self, width, height):
+        self.width = width
+        self.height = height
+        self.scale_factor = min(width / 1280, height / 720)  # Base resolution
+    
+    def scale(self, value):
+        """Scale a value based on screen size"""
+        return int(value * self.scale_factor)
+    
+    def get_rect(self, x_pct, y_pct, width_pct, height_pct):
+        """Get rectangle based on percentages of screen size"""
+        x = int(self.width * x_pct)
+        y = int(self.height * y_pct)
+        width = int(self.width * width_pct)
+        height = int(self.height * height_pct)
+        return pygame.Rect(x, y, width, height)
+
+
+class ModalDialog:
+    """A modal dialog that properly handles layering and focus"""
+    
+    def __init__(self, screen, rect, content, on_close=None):
+        self.screen = screen
+        self.overlay = Panel(
+            pygame.Rect(0, 0, screen.width, screen.height),
+            color=(0, 0, 0, 128),  # Semi-transparent
+            border_color=None,
+            border_width=0,
+            rounded=False
+        )
+        
+        # Center dialog on screen if not specified
+        if rect is None:
+            width, height = 400, 300
+            rect = pygame.Rect(
+                (screen.width - width) // 2,
+                (screen.height - height) // 2,
+                width, height
+            )
+            
+        self.panel = Panel(rect, rounded=True)
+        self.on_close = on_close
+        
+        # Add content to panel
+        if isinstance(content, list):
+            for element in content:
+                self.panel.add_element(element)
+                
+    def show(self):
+        """Show the dialog with proper z-ordering"""
+        self.screen.add_ui_element(self.overlay, z_index=90)
+        self.screen.add_ui_element(self.panel, z_index=100)
+        
+    def hide(self):
+        """Hide the dialog"""
+        if self.overlay in self.screen.ui_elements:
+            self.screen.ui_elements.remove(self.overlay)
+        if self.panel in self.screen.ui_elements:
+            self.screen.ui_elements.remove(self.panel)
+        if self.on_close:
+            self.on_close()

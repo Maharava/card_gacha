@@ -871,25 +871,36 @@ class GameScreen(Screen):
                                (player_x, start_y), (player_x, end_y), 1)
     
     def _render_hand(self):
-        """Render the player's hand."""
+        """Render the player's hand with proper scaling and positioning"""
         if not self.game_state:
             return
         
-        # Draw each card in hand
-        for i, card in enumerate(self.game_state.player.hand):
-            x = self._get_hand_card_x(i)
+        hand = self.game_state.player.hand
+        num_cards = len(hand)
+        
+        # Calculate card spacing based on number of cards
+        max_width = self.width - 300  # Reserve space on edges
+        
+        if num_cards > 0:
+            # Scale cards if too many to fit
+            if num_cards * self.card_renderer.card_size[0] > max_width:
+                overlap_factor = min(1.0, max_width / (num_cards * self.card_renderer.card_size[0]))
+                spacing = self.card_renderer.card_size[0] * overlap_factor
+            else:
+                spacing = self.card_renderer.card_size[0] + 10
             
-            # Determine if card is selectable (can be played)
-            selectable = (self.game_state.current_phase == GamePhase.PLAY and
-                         self.game_state.current_player == self.game_state.player and
-                         card.cost <= self.game_state.player.energy)
+            # Calculate starting position to center the hand
+            start_x = (self.width - (spacing * (num_cards - 1) + self.card_renderer.card_size[0])) // 2
             
-            # Determine if card is selected
-            selected = i == self.selected_card_index
-            
-            # Draw the card
-            self.card_renderer.render_card(self.display, card, (x, self.hand_y), 
-                                        selectable=selectable, selected=selected)
+            # Render each card
+            for i, card in enumerate(hand):
+                x = start_x + (i * spacing)
+                self.card_renderer.render_card(
+                    self.display, 
+                    card, 
+                    (x, self.hand_y),
+                    selectable=(i == self.selected_card_index)
+                )
     
     def _render_game_log(self):
         """Render the game log in the game panel."""

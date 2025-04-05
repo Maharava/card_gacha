@@ -125,3 +125,16 @@ class Screen:
         """
         if self.manager:
             self.manager.switch_to(screen_name, **kwargs)
+
+    def add_ui_element(self, element, z_index=0):
+        """Add a UI element with z-index for proper layering"""
+        if not hasattr(self, 'ui_elements_with_z'):
+            # Initialize if doesn't exist
+            self.ui_elements_with_z = []
+            
+        # Store element with its z-index
+        self.ui_elements_with_z.append((element, z_index))
+        
+        # Sort elements by z-index and update ui_elements
+        self.ui_elements_with_z.sort(key=lambda x: x[1])
+        self.ui_elements = [elem for elem, _ in self.ui_elements_with_z]
